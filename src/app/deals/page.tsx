@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { MainLayout } from '@/components/layout/main-layout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -37,7 +37,7 @@ export default function DealsPage() {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
 
-  const loadDeals = async () => {
+  const loadDeals = useCallback(async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams({
@@ -60,7 +60,7 @@ export default function DealsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [page, statusFilter])
 
   useEffect(() => {
     loadDeals()

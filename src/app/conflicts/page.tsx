@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { MainLayout } from '@/components/layout/main-layout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -45,7 +45,7 @@ export default function ConflictsPage() {
   const [statusFilter, setStatusFilter] = useState('pending')
   const [typeFilter, setTypeFilter] = useState('')
 
-  const loadConflicts = async () => {
+  const loadConflicts = useCallback(async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams({
@@ -70,7 +70,7 @@ export default function ConflictsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [statusFilter, typeFilter])
 
   useEffect(() => {
     loadConflicts()
