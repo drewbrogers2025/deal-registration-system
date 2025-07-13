@@ -9,8 +9,7 @@
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "type-check": "tsc --noEmit",
-    "build:analyze": "ANALYZE=true npm run build",
-    "postbuild": "next-sitemap"
+    "build:analyze": "ANALYZE=true npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",
