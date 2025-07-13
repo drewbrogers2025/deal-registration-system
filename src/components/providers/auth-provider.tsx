@@ -1,9 +1,9 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClientComponentClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import type { User } from '@supabase/auth-helpers-nextjs'
+import type { User } from '@supabase/supabase-js'
 
 type AuthContextType = {
   user: User | null
@@ -29,13 +29,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
-  const supabase = createClientComponentClient()
+
+  // Handle missing environment variables gracefully
+  const [supabase, setSupabase] = useState<ReturnType<typeof createClientComponentClient> | null>(null)
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
+    try {
+      const client = createClientComponentClient()
+      setSupabase(client)
+    } catch (error) {
+      console.warn('Supabase client initialization failed:', error)
       setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!supabase) return
+
+    const getUser = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        setUser(user)
+        setLoading(false)
+      } catch (error) {
+        console.warn('Failed to get user:', error)
+        setLoading(false)
+      }
     }
 
     getUser()
@@ -44,13 +63,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (event, session) => {
         setUser(session?.user ?? null)
         setLoading(false)
-        
+
         if (event === 'SIGNED_IN') {
           router.push('/')
         } else if (event === 'SIGNED_OUT') {
           router.push('/auth/login')
         }
-        
+
         router.refresh()
       }
     )
@@ -59,7 +78,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [supabase, router])
 
   const signOut = async () => {
-    await supabase.auth.signOut()
+    if (supabase) {
+      await supabase.auth.signOut()
+    }
   }
 
   const value = {
