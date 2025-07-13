@@ -6,7 +6,7 @@ import {
   isDealValueSimilar, 
   isWithinTimeWindow 
 } from './utils'
-import type { Deal, EndUser, DealConflict, ConflictType } from './types'
+import type { Deal, EndUser, ConflictType } from './types'
 
 export interface ConflictDetectionResult {
   hasConflicts: boolean
@@ -87,7 +87,7 @@ export class ConflictDetectionEngine {
       total_value: number
       submission_date?: string
     },
-    existingDeal: any
+    existingDeal: Deal & { end_user: EndUser; reseller: { id: string; name: string } }
   ): Promise<DetectedConflict[]> {
     const conflicts: DetectedConflict[] = []
 
@@ -112,7 +112,10 @@ export class ConflictDetectionEngine {
     return conflicts
   }
 
-  private checkEndUserConflict(newDeal: any, existingDeal: any): DetectedConflict | null {
+  private checkEndUserConflict(
+    newDeal: { end_user: EndUser; reseller_id: string },
+    existingDeal: Deal & { end_user: EndUser; reseller: { id: string; name: string } }
+  ): DetectedConflict | null {
     const newCompany = normalizeCompanyName(newDeal.end_user.company_name)
     const existingCompany = normalizeCompanyName(existingDeal.end_user.company_name)
     
@@ -153,7 +156,10 @@ export class ConflictDetectionEngine {
     return null
   }
 
-  private checkTerritoryConflict(newDeal: any, existingDeal: any): DetectedConflict | null {
+  private checkTerritoryConflict(
+    newDeal: { end_user: EndUser; reseller_id: string },
+    existingDeal: Deal & { end_user: EndUser; reseller: { id: string; name: string } }
+  ): DetectedConflict | null {
     // Skip if same reseller
     if (newDeal.reseller_id === existingDeal.reseller_id) {
       return null
@@ -184,7 +190,10 @@ export class ConflictDetectionEngine {
     return null
   }
 
-  private checkTimingConflict(newDeal: any, existingDeal: any): DetectedConflict | null {
+  private checkTimingConflict(
+    newDeal: { end_user: EndUser; total_value: number; submission_date?: string },
+    existingDeal: Deal & { end_user: EndUser; total_value: number; created_at: string; submission_date?: string }
+  ): DetectedConflict | null {
     const newDate = newDeal.submission_date || new Date().toISOString()
     const existingDate = existingDeal.submission_date || existingDeal.created_at
 

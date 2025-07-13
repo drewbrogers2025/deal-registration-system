@@ -36,7 +36,7 @@ export default function LoginPage() {
         router.push('/')
         router.refresh()
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred')
     } finally {
       setLoading(false)
@@ -59,7 +59,7 @@ export default function LoginPage() {
         setError(error.message)
         setLoading(false)
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred')
       setLoading(false)
     }
@@ -87,7 +87,7 @@ export default function LoginPage() {
       } else {
         setMessage('Check your email for the magic link!')
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred')
     } finally {
       setLoading(false)
@@ -224,7 +224,7 @@ export default function LoginPage() {
             </div>
 
             <div className="text-center text-sm text-gray-600">
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <Button variant="link" className="p-0 h-auto text-sm">
                 Contact your administrator
               </Button>

@@ -74,7 +74,7 @@ export default function ConflictsPage() {
 
   useEffect(() => {
     loadConflicts()
-  }, [statusFilter, typeFilter])
+  }, [statusFilter, typeFilter, loadConflicts])
 
   const handleResolveConflict = async (conflictId: string, dealId: string, assignedResellerId: string) => {
     try {

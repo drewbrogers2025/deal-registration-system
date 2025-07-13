@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       query = query.ilike('name', `%${search}%`)
     }
     
-    const { data: products, error, count } = await query
+    const { data: products, error } = await query
     
     if (error) {
       console.error('Error fetching products:', error)

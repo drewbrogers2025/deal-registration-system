@@ -146,7 +146,7 @@ export function isValidUUID(uuid: string): boolean {
 }
 
 // Array utilities
-export function groupBy<T, K extends keyof any>(array: T[], key: (item: T) => K): Record<K, T[]> {
+export function groupBy<T, K extends keyof Record<string, unknown>>(array: T[], key: (item: T) => K): Record<K, T[]> {
   return array.reduce((groups, item) => {
     const group = key(item)
     groups[group] = groups[group] || []
@@ -167,7 +167,7 @@ export function sortBy<T>(array: T[], key: keyof T, direction: 'asc' | 'desc' = 
 }
 
 // Debounce utility for search
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {

@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       query = query.ilike('name', `%${search}%`)
     }
     
-    const { data: resellers, error, count } = await query
+    const { data: resellers, error } = await query
     
     if (error) {
       console.error('Error fetching resellers:', error)

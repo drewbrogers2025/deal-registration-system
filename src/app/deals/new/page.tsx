@@ -11,7 +11,7 @@ import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { CreateDealSchema, type CreateDeal, type Reseller, type Product } from '@/lib/types'
 import { formatCurrency } from '@/lib/utils'
-import { Plus, Trash2, AlertTriangle, CheckCircle } from 'lucide-react'
+import { Plus, Trash2, AlertTriangle } from 'lucide-react'
 
 interface ConflictAlert {
   type: string
@@ -105,7 +105,7 @@ export default function NewDealPage() {
       if (response.ok) {
         // Check for conflicts
         if (result.data.conflicts?.hasConflicts) {
-          const conflictAlerts: ConflictAlert[] = result.data.conflicts.conflicts.map((conflict: any) => ({
+          const conflictAlerts: ConflictAlert[] = result.data.conflicts.conflicts.map((conflict: { type: string; severity: 'high' | 'medium' | 'low'; reason: string }) => ({
             type: conflict.type,
             severity: conflict.severity,
             message: conflict.reason

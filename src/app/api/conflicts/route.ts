@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
       query = query.eq('assigned_to_staff', assigned_to_staff)
     }
     
-    const { data: conflicts, error, count } = await query
+    const { data: conflicts, error } = await query
     
     if (error) {
       console.error('Error fetching conflicts:', error)
@@ -105,7 +105,7 @@ export async function PATCH(request: NextRequest) {
       )
     }
     
-    const updateData: any = {}
+    const updateData: Record<string, unknown> = {}
     
     if (resolution_status) {
       updateData.resolution_status = resolution_status
