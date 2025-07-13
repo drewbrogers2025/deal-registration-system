@@ -17,6 +17,7 @@ interface Conflict {
     id: string
     total_value: number
     reseller: {
+      id: string
       name: string
       territory: string
     }
@@ -29,6 +30,7 @@ interface Conflict {
     id: string
     total_value: number
     reseller: {
+      id: string
       name: string
       territory: string
     }
