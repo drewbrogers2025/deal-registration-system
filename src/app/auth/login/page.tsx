@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { useState, useEffect } from 'react'
+import { createClientComponentClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -15,12 +15,27 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
-  
+  const [supabase, setSupabase] = useState<ReturnType<typeof createClientComponentClient> | null>(null)
+
   const router = useRouter()
-  const supabase = createClientComponentClient()
+
+  useEffect(() => {
+    try {
+      const client = createClientComponentClient()
+      setSupabase(client)
+    } catch (error) {
+      console.warn('Supabase client initialization failed:', error)
+      setError('Authentication service is not available')
+    }
+  }, [])
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!supabase) {
+      setError('Authentication service is not available')
+      return
+    }
+
     setLoading(true)
     setError(null)
 
@@ -44,6 +59,11 @@ export default function LoginPage() {
   }
 
   const handleGoogleLogin = async () => {
+    if (!supabase) {
+      setError('Authentication service is not available')
+      return
+    }
+
     setLoading(true)
     setError(null)
 
@@ -68,6 +88,11 @@ export default function LoginPage() {
   const handleMagicLink = async () => {
     if (!email) {
       setError('Please enter your email address')
+      return
+    }
+
+    if (!supabase) {
+      setError('Authentication service is not available')
       return
     }
 
