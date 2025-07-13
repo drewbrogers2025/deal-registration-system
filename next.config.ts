@@ -18,12 +18,6 @@ const nextConfig: NextConfig = {
   // Compress responses
   compress: true,
 
-  // Enable SWC minification
-  swcMinify: true,
-
-  // Optimize CSS
-  optimizeFonts: true,
-
   // Environment variables for build optimization
   env: {
     CUSTOM_KEY: 'production',

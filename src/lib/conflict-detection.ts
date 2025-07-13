@@ -6,7 +6,9 @@ import {
   isDealValueSimilar, 
   isWithinTimeWindow 
 } from './utils'
-import type { Deal, EndUser, ConflictType } from './types'
+import type { Deal, EndUser } from './types'
+import { ConflictType } from './types'
+import { z } from 'zod'
 
 export interface ConflictDetectionResult {
   hasConflicts: boolean
@@ -15,7 +17,7 @@ export interface ConflictDetectionResult {
 }
 
 export interface DetectedConflict {
-  type: ConflictType
+  type: z.infer<typeof ConflictType>
   severity: 'high' | 'medium' | 'low'
   conflictingDeal: Deal & { end_user: EndUser }
   reason: string
@@ -192,10 +194,10 @@ export class ConflictDetectionEngine {
 
   private checkTimingConflict(
     newDeal: { end_user: EndUser; total_value: number; submission_date?: string },
-    existingDeal: Deal & { end_user: EndUser; total_value: number; created_at: string; submission_date?: string }
+    existingDeal: Deal & { end_user: EndUser; total_value: number; created_at?: string; submission_date?: string }
   ): DetectedConflict | null {
     const newDate = newDeal.submission_date || new Date().toISOString()
-    const existingDate = existingDeal.submission_date || existingDeal.created_at
+    const existingDate = existingDeal.submission_date || existingDeal.created_at || new Date().toISOString()
 
     // Check if within time window (default 90 days)
     if (!isWithinTimeWindow(newDate, existingDate, 90)) {
