@@ -6,7 +6,9 @@ import {
   isDealValueSimilar, 
   isWithinTimeWindow 
 } from './utils'
-import type { Deal, EndUser, DealConflict, ConflictType } from './types'
+import type { Deal, EndUser } from './types'
+import { ConflictType } from './types'
+import { z } from 'zod'
 
 export interface ConflictDetectionResult {
   hasConflicts: boolean
@@ -15,7 +17,7 @@ export interface ConflictDetectionResult {
 }
 
 export interface DetectedConflict {
-  type: ConflictType
+  type: z.infer<typeof ConflictType>
   severity: 'high' | 'medium' | 'low'
   conflictingDeal: Deal & { end_user: EndUser }
   reason: string
@@ -87,7 +89,7 @@ export class ConflictDetectionEngine {
       total_value: number
       submission_date?: string
     },
-    existingDeal: any
+    existingDeal: Deal & { end_user: EndUser; reseller: { id: string; name: string } }
   ): Promise<DetectedConflict[]> {
     const conflicts: DetectedConflict[] = []
 
@@ -112,7 +114,10 @@ export class ConflictDetectionEngine {
     return conflicts
   }
 
-  private checkEndUserConflict(newDeal: any, existingDeal: any): DetectedConflict | null {
+  private checkEndUserConflict(
+    newDeal: { end_user: EndUser; reseller_id: string },
+    existingDeal: Deal & { end_user: EndUser; reseller: { id: string; name: string } }
+  ): DetectedConflict | null {
     const newCompany = normalizeCompanyName(newDeal.end_user.company_name)
     const existingCompany = normalizeCompanyName(existingDeal.end_user.company_name)
     
@@ -153,7 +158,10 @@ export class ConflictDetectionEngine {
     return null
   }
 
-  private checkTerritoryConflict(newDeal: any, existingDeal: any): DetectedConflict | null {
+  private checkTerritoryConflict(
+    newDeal: { end_user: EndUser; reseller_id: string },
+    existingDeal: Deal & { end_user: EndUser; reseller: { id: string; name: string } }
+  ): DetectedConflict | null {
     // Skip if same reseller
     if (newDeal.reseller_id === existingDeal.reseller_id) {
       return null
@@ -184,9 +192,12 @@ export class ConflictDetectionEngine {
     return null
   }
 
-  private checkTimingConflict(newDeal: any, existingDeal: any): DetectedConflict | null {
+  private checkTimingConflict(
+    newDeal: { end_user: EndUser; total_value: number; submission_date?: string },
+    existingDeal: Deal & { end_user: EndUser; total_value: number; created_at?: string; submission_date?: string }
+  ): DetectedConflict | null {
     const newDate = newDeal.submission_date || new Date().toISOString()
-    const existingDate = existingDeal.submission_date || existingDeal.created_at
+    const existingDate = existingDeal.submission_date || existingDeal.created_at || new Date().toISOString()
 
     // Check if within time window (default 90 days)
     if (!isWithinTimeWindow(newDate, existingDate, 90)) {

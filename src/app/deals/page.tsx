@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { MainLayout } from '@/components/layout/main-layout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { formatCurrency, formatDate, getStatusColor } from '@/lib/utils'
-import { Search, Filter, Plus, Eye, AlertTriangle } from 'lucide-react'
+import { formatCurrency, formatDate } from '@/lib/utils'
+import { Search, Plus, Eye, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 
 interface Deal {
@@ -26,7 +26,7 @@ interface Deal {
   assigned_reseller?: {
     name: string
   }
-  conflicts: any[]
+  conflicts: unknown[]
 }
 
 export default function DealsPage() {
@@ -37,7 +37,7 @@ export default function DealsPage() {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
 
-  const loadDeals = async () => {
+  const loadDeals = useCallback(async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams({
@@ -60,11 +60,11 @@ export default function DealsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [page, statusFilter])
 
   useEffect(() => {
     loadDeals()
-  }, [page, statusFilter])
+  }, [page, statusFilter, loadDeals])
 
   const filteredDeals = deals.filter(deal =>
     deal.end_user.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||

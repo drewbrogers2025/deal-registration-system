@@ -2,11 +2,13 @@ import { z } from 'zod'
 
 // Enums
 export const ResellerTier = z.enum(['gold', 'silver', 'bronze'])
-export const UserStatus = z.enum(['active', 'inactive'])
+export const UserStatus = z.enum(['active', 'inactive', 'pending'])
 export const DealStatus = z.enum(['pending', 'assigned', 'disputed', 'approved', 'rejected'])
 export const ConflictType = z.enum(['duplicate_end_user', 'territory_overlap', 'timing_conflict'])
 export const ResolutionStatus = z.enum(['pending', 'resolved', 'dismissed'])
 export const StaffRole = z.enum(['admin', 'manager', 'staff'])
+export const UserType = z.enum(['site_admin', 'vendor_user', 'reseller'])
+export const ApprovalStatus = z.enum(['pending', 'approved', 'rejected'])
 
 // Base schemas
 export const ResellerSchema = z.object({
@@ -72,13 +74,66 @@ export const DealConflictSchema = z.object({
   updated_at: z.string().optional(),
 })
 
-export const StaffUserSchema = z.object({
-  id: z.string().uuid().optional(),
+// Enhanced User Schemas
+export const UserSchema = z.object({
+  id: z.string().uuid(),
   email: z.string().email('Valid email is required'),
   name: z.string().min(1, 'Name is required'),
-  role: StaffRole.default('staff'),
+  user_type: UserType,
+  approval_status: ApprovalStatus.default('pending'),
+  phone: z.string().optional(),
+  company_position: z.string().optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
+  approved_at: z.string().optional(),
+  approved_by: z.string().uuid().optional(),
+})
+
+export const StaffUserSchema = z.object({
+  id: z.string().uuid(),
+  role: StaffRole.default('staff'),
+  department: z.string().optional(),
+  permissions: z.record(z.any()).default({}),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+})
+
+export const ResellerUserSchema = z.object({
+  id: z.string().uuid(),
+  reseller_id: z.string().uuid(),
+  can_create_deals: z.boolean().default(true),
+  can_view_all_reseller_deals: z.boolean().default(false),
+  territory_access: z.array(z.string()).default([]),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+})
+
+// User Registration Schemas
+export const UserRegistrationSchema = z.object({
+  email: z.string().email('Valid email is required'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  name: z.string().min(1, 'Name is required'),
+  user_type: UserType,
+  phone: z.string().optional(),
+  company_position: z.string().optional(),
+})
+
+export const ResellerRegistrationSchema = UserRegistrationSchema.extend({
+  user_type: z.literal('reseller'),
+  reseller_company_name: z.string().min(1, 'Company name is required'),
+  reseller_territory: z.string().min(1, 'Territory is required'),
+  reseller_tier: ResellerTier.default('bronze'),
+  company_address: z.string().optional(),
+  company_phone: z.string().optional(),
+  website: z.string().url().optional(),
+  business_license: z.string().optional(),
+  tax_id: z.string().optional(),
+})
+
+export const StaffRegistrationSchema = UserRegistrationSchema.extend({
+  user_type: z.enum(['site_admin', 'vendor_user']),
+  role: StaffRole.default('staff'),
+  department: z.string().optional(),
 })
 
 // Form schemas for creating/updating
@@ -115,6 +170,13 @@ export type StaffUser = z.infer<typeof StaffUserSchema>
 export type CreateDeal = z.infer<typeof CreateDealSchema>
 export type AssignDeal = z.infer<typeof AssignDealSchema>
 
+// Enhanced User Types
+export type User = z.infer<typeof UserSchema>
+export type ResellerUser = z.infer<typeof ResellerUserSchema>
+export type UserRegistration = z.infer<typeof UserRegistrationSchema>
+export type ResellerRegistration = z.infer<typeof ResellerRegistrationSchema>
+export type StaffRegistration = z.infer<typeof StaffRegistrationSchema>
+
 // Extended types with relationships
 export type DealWithRelations = Deal & {
   reseller: Reseller
@@ -128,6 +190,41 @@ export type ConflictWithRelations = DealConflict & {
   deal: DealWithRelations
   competing_deal: DealWithRelations
   assigned_staff?: StaffUser | null
+}
+
+export type UserWithProfile = User & {
+  staff_user?: StaffUser | null
+  reseller_user?: ResellerUser | null
+}
+
+export type ResellerWithUsers = Reseller & {
+  reseller_users: (ResellerUser & { user: User })[]
+}
+
+// Authentication Context Types
+export type AuthUser = {
+  id: string
+  email: string
+  user_type: UserType['_type']
+  approval_status: ApprovalStatus['_type']
+  name: string
+  phone?: string
+  company_position?: string
+  staff_user?: StaffUser | null
+  reseller_user?: ResellerUser | null
+}
+
+// User Management Types
+export type UserApprovalAction = {
+  user_id: string
+  action: 'approve' | 'reject'
+  reason?: string
+}
+
+export type UserStatusUpdate = {
+  user_id: string
+  status: UserStatus['_type']
+  reason?: string
 }
 
 // API Response types

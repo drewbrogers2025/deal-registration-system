@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerComponentClient } from '@/lib/supabase'
 import { CreateDealSchema } from '@/lib/types'
 import { ConflictDetectionEngine } from '@/lib/conflict-detection'
-import { mockDeals } from '@/lib/mock-data'
 
 export async function GET(request: NextRequest) {
   try {
@@ -60,7 +59,7 @@ export async function GET(request: NextRequest) {
       query = query.not('conflicts', 'is', null)
     }
     
-    const { data: deals, error, count } = await query
+    const { data: deals, error } = await query
     
     if (error) {
       console.error('Error fetching deals:', error)

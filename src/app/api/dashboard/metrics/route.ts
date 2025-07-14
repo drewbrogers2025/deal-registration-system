@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createServerComponentClient } from '@/lib/supabase'
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const supabase = createServerComponentClient()
     
@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
     
-    const { data: recentDeals, error: recentDealsError } = await supabase
+    const { data: recentDeals } = await supabase
       .from('deals')
       .select('created_at')
       .gte('created_at', thirtyDaysAgo.toISOString())

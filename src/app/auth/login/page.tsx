@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { useState, useEffect } from 'react'
+import { createClientComponentClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,12 +16,27 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
-  
+  const [supabase, setSupabase] = useState<ReturnType<typeof createClientComponentClient> | null>(null)
+
   const router = useRouter()
-  const supabase = createClientComponentClient()
+
+  useEffect(() => {
+    try {
+      const client = createClientComponentClient()
+      setSupabase(client)
+    } catch (error) {
+      console.warn('Supabase client initialization failed:', error)
+      setError('Authentication service is not available')
+    }
+  }, [])
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!supabase) {
+      setError('Authentication service is not available')
+      return
+    }
+
     setLoading(true)
     setError(null)
 
@@ -36,7 +52,7 @@ export default function LoginPage() {
         router.push('/')
         router.refresh()
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred')
     } finally {
       setLoading(false)
@@ -44,6 +60,11 @@ export default function LoginPage() {
   }
 
   const handleGoogleLogin = async () => {
+    if (!supabase) {
+      setError('Authentication service is not available')
+      return
+    }
+
     setLoading(true)
     setError(null)
 
@@ -59,7 +80,7 @@ export default function LoginPage() {
         setError(error.message)
         setLoading(false)
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred')
       setLoading(false)
     }
@@ -68,6 +89,11 @@ export default function LoginPage() {
   const handleMagicLink = async () => {
     if (!email) {
       setError('Please enter your email address')
+      return
+    }
+
+    if (!supabase) {
+      setError('Authentication service is not available')
       return
     }
 
@@ -87,7 +113,7 @@ export default function LoginPage() {
       } else {
         setMessage('Check your email for the magic link!')
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred')
     } finally {
       setLoading(false)
@@ -212,7 +238,7 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            <div className="text-center">
+            <div className="text-center space-y-2">
               <Button
                 variant="link"
                 onClick={handleMagicLink}
@@ -221,13 +247,19 @@ export default function LoginPage() {
               >
                 Send magic link instead
               </Button>
+
+              <div>
+                <Link href="/auth/reset-password" className="text-sm text-blue-600 hover:text-blue-500">
+                  Forgot your password?
+                </Link>
+              </div>
             </div>
 
             <div className="text-center text-sm text-gray-600">
-              Don't have an account?{' '}
-              <Button variant="link" className="p-0 h-auto text-sm">
-                Contact your administrator
-              </Button>
+              Don&apos;t have an account?{' '}
+              <Link href="/auth/register" className="text-blue-600 hover:text-blue-500">
+                Register here
+              </Link>
             </div>
           </CardContent>
         </Card>

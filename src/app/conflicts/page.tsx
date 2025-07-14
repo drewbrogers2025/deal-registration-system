@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { MainLayout } from '@/components/layout/main-layout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -17,6 +17,7 @@ interface Conflict {
     id: string
     total_value: number
     reseller: {
+      id: string
       name: string
       territory: string
     }
@@ -29,6 +30,7 @@ interface Conflict {
     id: string
     total_value: number
     reseller: {
+      id: string
       name: string
       territory: string
     }
@@ -45,7 +47,7 @@ export default function ConflictsPage() {
   const [statusFilter, setStatusFilter] = useState('pending')
   const [typeFilter, setTypeFilter] = useState('')
 
-  const loadConflicts = async () => {
+  const loadConflicts = useCallback(async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams({
@@ -70,11 +72,11 @@ export default function ConflictsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [statusFilter, typeFilter])
 
   useEffect(() => {
     loadConflicts()
-  }, [statusFilter, typeFilter])
+  }, [statusFilter, typeFilter, loadConflicts])
 
   const handleResolveConflict = async (conflictId: string, dealId: string, assignedResellerId: string) => {
     try {

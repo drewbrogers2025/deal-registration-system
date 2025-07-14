@@ -7,23 +7,52 @@ CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 
 -- Create custom types
 CREATE TYPE reseller_tier AS ENUM ('gold', 'silver', 'bronze');
-CREATE TYPE user_status AS ENUM ('active', 'inactive');
+CREATE TYPE user_status AS ENUM ('active', 'inactive', 'pending');
 CREATE TYPE deal_status AS ENUM ('pending', 'assigned', 'disputed', 'approved', 'rejected');
 CREATE TYPE conflict_type AS ENUM ('duplicate_end_user', 'territory_overlap', 'timing_conflict');
 CREATE TYPE resolution_status AS ENUM ('pending', 'resolved', 'dismissed');
 CREATE TYPE staff_role AS ENUM ('admin', 'manager', 'staff');
+CREATE TYPE user_type AS ENUM ('site_admin', 'vendor_user', 'reseller');
+CREATE TYPE approval_status AS ENUM ('pending', 'approved', 'rejected');
 
--- Staff Users table (for authentication and role management)
-CREATE TABLE staff_users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+-- Users table (unified user management for all user types)
+CREATE TABLE users (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT UNIQUE NOT NULL,
     name TEXT NOT NULL,
+    user_type user_type NOT NULL,
+    approval_status approval_status DEFAULT 'pending',
+    phone TEXT,
+    company_position TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    approved_at TIMESTAMP WITH TIME ZONE,
+    approved_by UUID REFERENCES auth.users(id)
+);
+
+-- Staff Users table (for backward compatibility and staff-specific data)
+CREATE TABLE staff_users (
+    id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     role staff_role DEFAULT 'staff',
+    department TEXT,
+    permissions JSONB DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Resellers table
+-- Reseller Users table (linking auth users to reseller profiles)
+CREATE TABLE reseller_users (
+    id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    reseller_id UUID REFERENCES resellers(id) ON DELETE CASCADE,
+    can_create_deals BOOLEAN DEFAULT true,
+    can_view_all_reseller_deals BOOLEAN DEFAULT false,
+    territory_access TEXT[], -- Array of territories this user can access
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(id, reseller_id)
+);
+
+-- Resellers table (company/organization profiles)
 CREATE TABLE resellers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name TEXT NOT NULL,
@@ -31,6 +60,14 @@ CREATE TABLE resellers (
     territory TEXT NOT NULL,
     tier reseller_tier DEFAULT 'bronze',
     status user_status DEFAULT 'active',
+    company_address TEXT,
+    company_phone TEXT,
+    website TEXT,
+    business_license TEXT,
+    tax_id TEXT,
+    primary_contact_name TEXT,
+    primary_contact_email TEXT,
+    primary_contact_phone TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -240,7 +277,9 @@ $$ LANGUAGE plpgsql;
 
 -- Row Level Security (RLS) Policies
 -- Enable RLS on all tables
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE staff_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reseller_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE resellers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE end_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
@@ -250,50 +289,206 @@ ALTER TABLE deal_conflicts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE assignment_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE eligibility_rules ENABLE ROW LEVEL SECURITY;
 
--- Staff users policies (only authenticated staff can access)
-CREATE POLICY "Staff can view all staff users" ON staff_users
-    FOR SELECT USING (auth.role() = 'authenticated');
+-- Users table policies (base user management)
+CREATE POLICY "Users can view their own profile" ON users
+    FOR SELECT USING (id = auth.uid());
 
-CREATE POLICY "Admins can manage staff users" ON staff_users
-    FOR ALL USING (
+CREATE POLICY "Site admins can view all users" ON users
+    FOR SELECT USING (
         EXISTS (
-            SELECT 1 FROM staff_users
-            WHERE id = auth.uid() AND role = 'admin'
+            SELECT 1 FROM users u
+            WHERE u.id = auth.uid()
+            AND u.user_type = 'site_admin'
+            AND u.approval_status = 'approved'
         )
     );
 
--- Resellers policies (staff can view/manage all)
+CREATE POLICY "Site admins can manage all users" ON users
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM users u
+            WHERE u.id = auth.uid()
+            AND u.user_type = 'site_admin'
+            AND u.approval_status = 'approved'
+        )
+    );
+
+CREATE POLICY "Users can update their own profile" ON users
+    FOR UPDATE USING (id = auth.uid())
+    WITH CHECK (id = auth.uid());
+
+-- Staff users policies
+CREATE POLICY "Staff can view staff data" ON staff_users
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM users u
+            WHERE u.id = auth.uid()
+            AND u.user_type IN ('site_admin', 'vendor_user')
+            AND u.approval_status = 'approved'
+        )
+    );
+
+CREATE POLICY "Site admins can manage staff users" ON staff_users
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM users u
+            WHERE u.id = auth.uid()
+            AND u.user_type = 'site_admin'
+            AND u.approval_status = 'approved'
+        )
+    );
+
+-- Reseller users policies
+CREATE POLICY "Reseller users can view their own data" ON reseller_users
+    FOR SELECT USING (id = auth.uid());
+
+CREATE POLICY "Site admins and vendor users can view reseller users" ON reseller_users
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM users u
+            WHERE u.id = auth.uid()
+            AND u.user_type IN ('site_admin', 'vendor_user')
+            AND u.approval_status = 'approved'
+        )
+    );
+
+CREATE POLICY "Site admins and vendor users can manage reseller users" ON reseller_users
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM users u
+            WHERE u.id = auth.uid()
+            AND u.user_type IN ('site_admin', 'vendor_user')
+            AND u.approval_status = 'approved'
+        )
+    );
+
+-- Resellers policies (company profiles)
+CREATE POLICY "Resellers can view their own company" ON resellers
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM reseller_users ru
+            WHERE ru.reseller_id = resellers.id
+            AND ru.id = auth.uid()
+        )
+    );
+
 CREATE POLICY "Staff can view all resellers" ON resellers
-    FOR SELECT USING (auth.role() = 'authenticated');
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM users u
+            WHERE u.id = auth.uid()
+            AND u.user_type IN ('site_admin', 'vendor_user')
+            AND u.approval_status = 'approved'
+        )
+    );
 
 CREATE POLICY "Staff can manage resellers" ON resellers
-    FOR ALL USING (auth.role() = 'authenticated');
-
--- End users policies (staff can view/manage all)
-CREATE POLICY "Staff can view all end users" ON end_users
-    FOR SELECT USING (auth.role() = 'authenticated');
-
-CREATE POLICY "Staff can manage end users" ON end_users
-    FOR ALL USING (auth.role() = 'authenticated');
-
--- Products policies (staff can view/manage all)
-CREATE POLICY "Staff can view all products" ON products
-    FOR SELECT USING (auth.role() = 'authenticated');
-
-CREATE POLICY "Managers and admins can manage products" ON products
     FOR ALL USING (
         EXISTS (
-            SELECT 1 FROM staff_users
-            WHERE id = auth.uid() AND role IN ('admin', 'manager')
+            SELECT 1 FROM users u
+            WHERE u.id = auth.uid()
+            AND u.user_type IN ('site_admin', 'vendor_user')
+            AND u.approval_status = 'approved'
         )
     );
 
--- Deals policies (staff can view/manage all)
+-- End users policies
+CREATE POLICY "Staff can view all end users" ON end_users
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM users u
+            WHERE u.id = auth.uid()
+            AND u.user_type IN ('site_admin', 'vendor_user')
+            AND u.approval_status = 'approved'
+        )
+    );
+
+CREATE POLICY "Staff can manage end users" ON end_users
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM users u
+            WHERE u.id = auth.uid()
+            AND u.user_type IN ('site_admin', 'vendor_user')
+            AND u.approval_status = 'approved'
+        )
+    );
+
+-- Products policies
+CREATE POLICY "All authenticated users can view products" ON products
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM users u
+            WHERE u.id = auth.uid()
+            AND u.approval_status = 'approved'
+        )
+    );
+
+CREATE POLICY "Staff can manage products" ON products
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM users u
+            JOIN staff_users su ON u.id = su.id
+            WHERE u.id = auth.uid()
+            AND u.user_type IN ('site_admin', 'vendor_user')
+            AND u.approval_status = 'approved'
+            AND su.role IN ('admin', 'manager')
+        )
+    );
+
+-- Deals policies (three-tier access control)
 CREATE POLICY "Staff can view all deals" ON deals
-    FOR SELECT USING (auth.role() = 'authenticated');
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM users u
+            WHERE u.id = auth.uid()
+            AND u.user_type IN ('site_admin', 'vendor_user')
+            AND u.approval_status = 'approved'
+        )
+    );
+
+CREATE POLICY "Resellers can view their own deals" ON deals
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM reseller_users ru
+            WHERE ru.id = auth.uid()
+            AND ru.reseller_id = deals.reseller_id
+        )
+    );
 
 CREATE POLICY "Staff can manage deals" ON deals
-    FOR ALL USING (auth.role() = 'authenticated');
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM users u
+            WHERE u.id = auth.uid()
+            AND u.user_type IN ('site_admin', 'vendor_user')
+            AND u.approval_status = 'approved'
+        )
+    );
+
+CREATE POLICY "Resellers can create deals" ON deals
+    FOR INSERT WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM reseller_users ru
+            WHERE ru.id = auth.uid()
+            AND ru.reseller_id = deals.reseller_id
+            AND ru.can_create_deals = true
+        )
+    );
+
+CREATE POLICY "Resellers can update their own deals" ON deals
+    FOR UPDATE USING (
+        EXISTS (
+            SELECT 1 FROM reseller_users ru
+            WHERE ru.id = auth.uid()
+            AND ru.reseller_id = deals.reseller_id
+        )
+    ) WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM reseller_users ru
+            WHERE ru.id = auth.uid()
+            AND ru.reseller_id = deals.reseller_id
+        )
+    );
 
 -- Deal products policies (follow deal permissions)
 CREATE POLICY "Staff can view all deal products" ON deal_products
@@ -329,10 +524,22 @@ CREATE POLICY "Managers and admins can manage eligibility rules" ON eligibility_
     );
 
 -- Sample data for testing
-INSERT INTO staff_users (email, name, role) VALUES
-    ('admin@company.com', 'System Admin', 'admin'),
-    ('manager@company.com', 'Deal Manager', 'manager'),
-    ('staff@company.com', 'Deal Staff', 'staff');
+-- Note: In production, users should be created through the registration process
+-- These are for development/testing purposes only
+
+-- Sample users (these would normally be created via auth.users first)
+INSERT INTO users (id, email, name, user_type, approval_status, phone, company_position, approved_at) VALUES
+    ('00000000-0000-0000-0000-000000000001', 'admin@company.com', 'System Admin', 'site_admin', 'approved', '+1-555-0001', 'System Administrator', NOW()),
+    ('00000000-0000-0000-0000-000000000002', 'manager@company.com', 'Deal Manager', 'vendor_user', 'approved', '+1-555-0002', 'Deal Manager', NOW()),
+    ('00000000-0000-0000-0000-000000000003', 'staff@company.com', 'Deal Staff', 'vendor_user', 'approved', '+1-555-0003', 'Deal Coordinator', NOW()),
+    ('00000000-0000-0000-0000-000000000004', 'reseller1@partner.com', 'John Smith', 'reseller', 'approved', '+1-555-0004', 'Sales Manager', NOW()),
+    ('00000000-0000-0000-0000-000000000005', 'reseller2@partner.com', 'Jane Doe', 'reseller', 'pending', '+1-555-0005', 'Business Development', NOW());
+
+-- Sample staff users
+INSERT INTO staff_users (id, role, department) VALUES
+    ('00000000-0000-0000-0000-000000000001', 'admin', 'IT'),
+    ('00000000-0000-0000-0000-000000000002', 'manager', 'Sales'),
+    ('00000000-0000-0000-0000-000000000003', 'staff', 'Sales');
 
 INSERT INTO products (name, category, list_price) VALUES
     ('Enterprise Software License', 'Software', 50000.00),
