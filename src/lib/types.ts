@@ -267,6 +267,14 @@ export type RegistrationStep5 = z.infer<typeof RegistrationStep5Schema>
 export type EndUser = z.infer<typeof EndUserSchema>
 export type Product = z.infer<typeof ProductSchema>
 export type Deal = z.infer<typeof DealSchema>
+export type EnhancedDeal = z.infer<typeof EnhancedDealSchema>
+export type DealStageHistory = z.infer<typeof DealStageHistorySchema>
+export type DealActivity = z.infer<typeof DealActivitySchema>
+export type DealAttachment = z.infer<typeof DealAttachmentSchema>
+export type DealCompetitor = z.infer<typeof DealCompetitorSchema>
+export type DealTeamMember = z.infer<typeof DealTeamMemberSchema>
+export type DealForecasting = z.infer<typeof DealForecastingSchema>
+export type DealNotification = z.infer<typeof DealNotificationSchema>
 export type DealProduct = z.infer<typeof DealProductSchema>
 export type DealConflict = z.infer<typeof DealConflictSchema>
 export type StaffUser = z.infer<typeof StaffUserSchema>
@@ -301,10 +309,47 @@ export type DealWithRelations = Deal & {
   conflicts: (DealConflict & { competing_deal: Deal })[]
 }
 
+export type EnhancedDealWithRelations = EnhancedDeal & {
+  reseller: ResellerWithRelations
+  end_user: EndUser
+  assigned_reseller?: ResellerWithRelations | null
+  products: (DealProduct & { product: Product })[]
+  conflicts: (DealConflict & { competing_deal: EnhancedDeal })[]
+  stage_history: DealStageHistory[]
+  activities: (DealActivity & {
+    created_by_staff?: StaffUser | null
+    contact?: ResellerContact | null
+  })[]
+  attachments: (DealAttachment & {
+    uploaded_by_staff?: StaffUser | null
+  })[]
+  competitors: DealCompetitor[]
+  team_members: (DealTeamMember & {
+    staff_user: StaffUser
+    added_by_staff?: StaffUser | null
+  })[]
+  forecasting: (DealForecasting & {
+    created_by_staff?: StaffUser | null
+  })[]
+  notifications: DealNotification[]
+}
+
 export type ConflictWithRelations = DealConflict & {
   deal: DealWithRelations
   competing_deal: DealWithRelations
   assigned_staff?: StaffUser | null
+}
+
+export type DealActivityWithRelations = DealActivity & {
+  deal: EnhancedDeal
+  created_by_staff?: StaffUser | null
+  contact?: ResellerContact | null
+}
+
+export type DealTeamMemberWithRelations = DealTeamMember & {
+  deal: EnhancedDeal
+  staff_user: StaffUser
+  added_by_staff?: StaffUser | null
 }
 
 // Multi-step registration form data
@@ -360,3 +405,146 @@ export type DashboardMetrics = {
   total_value: number
   avg_resolution_time: number
 }
+
+// Enhanced deal management enums
+export const DealPriority = z.enum(['low', 'medium', 'high', 'urgent'])
+export const DealSource = z.enum(['inbound', 'outbound', 'referral', 'partner', 'marketing', 'event'])
+export const OpportunityStage = z.enum(['lead', 'qualified', 'proposal', 'negotiation', 'closed_won', 'closed_lost'])
+export const DealComplexity = z.enum(['simple', 'moderate', 'complex', 'enterprise'])
+
+// Enhanced deal schema
+export const EnhancedDealSchema = z.object({
+  id: z.string().uuid().optional(),
+  reseller_id: z.string().uuid(),
+  end_user_id: z.string().uuid(),
+  assigned_reseller_id: z.string().uuid().nullable().optional(),
+  status: DealStatus.default('pending'),
+  total_value: z.number().positive('Total value must be positive'),
+  submission_date: z.string().optional(),
+  assignment_date: z.string().nullable().optional(),
+  // Enhanced fields
+  deal_name: z.string().min(1, 'Deal name is required'),
+  deal_description: z.string().optional(),
+  deal_priority: DealPriority.default('medium'),
+  deal_source: DealSource.default('inbound'),
+  opportunity_stage: OpportunityStage.default('lead'),
+  deal_complexity: DealComplexity.default('simple'),
+  expected_close_date: z.string().optional(),
+  probability: z.number().int().min(0).max(100).optional(),
+  competitor_info: z.string().optional(),
+  special_requirements: z.string().optional(),
+  internal_notes: z.string().optional(),
+  customer_budget: z.number().min(0).optional(),
+  discount_percentage: z.number().min(0).max(100).optional(),
+  commission_rate: z.number().min(0).max(100).optional(),
+  lead_source: z.string().optional(),
+  campaign_id: z.string().optional(),
+  sales_stage_updated_at: z.string().optional(),
+  last_activity_date: z.string().optional(),
+  next_follow_up_date: z.string().optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+})
+
+// Deal stage history schema
+export const DealStageHistorySchema = z.object({
+  id: z.string().uuid().optional(),
+  deal_id: z.string().uuid(),
+  from_stage: OpportunityStage.optional(),
+  to_stage: OpportunityStage,
+  changed_by: z.string().uuid().optional(),
+  change_reason: z.string().optional(),
+  stage_duration_days: z.number().int().optional(),
+  notes: z.string().optional(),
+  created_at: z.string().optional(),
+})
+
+// Deal activity schema
+export const DealActivitySchema = z.object({
+  id: z.string().uuid().optional(),
+  deal_id: z.string().uuid(),
+  activity_type: z.string().min(1, 'Activity type is required'),
+  activity_subject: z.string().optional(),
+  activity_description: z.string().optional(),
+  activity_date: z.string().optional(),
+  duration_minutes: z.number().int().min(0).optional(),
+  outcome: z.string().optional(),
+  next_action: z.string().optional(),
+  next_action_date: z.string().optional(),
+  created_by: z.string().uuid().optional(),
+  contact_id: z.string().uuid().optional(),
+  metadata: z.record(z.any()).optional(),
+  created_at: z.string().optional(),
+})
+
+// Deal attachment schema
+export const DealAttachmentSchema = z.object({
+  id: z.string().uuid().optional(),
+  deal_id: z.string().uuid(),
+  file_name: z.string().min(1, 'File name is required'),
+  file_path: z.string().min(1, 'File path is required'),
+  file_size: z.number().int().min(0).optional(),
+  mime_type: z.string().optional(),
+  attachment_type: z.string().optional(),
+  description: z.string().optional(),
+  uploaded_by: z.string().uuid().optional(),
+  is_customer_visible: z.boolean().default(false),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+})
+
+// Deal competitor schema
+export const DealCompetitorSchema = z.object({
+  id: z.string().uuid().optional(),
+  deal_id: z.string().uuid(),
+  competitor_name: z.string().min(1, 'Competitor name is required'),
+  competitor_product: z.string().optional(),
+  competitor_price: z.number().min(0).optional(),
+  competitive_advantage: z.string().optional(),
+  competitive_weakness: z.string().optional(),
+  win_probability_impact: z.number().int().min(-50).max(50).optional(),
+  notes: z.string().optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+})
+
+// Deal team member schema
+export const DealTeamMemberSchema = z.object({
+  id: z.string().uuid().optional(),
+  deal_id: z.string().uuid(),
+  staff_user_id: z.string().uuid(),
+  role: z.string().min(1, 'Role is required'),
+  is_primary: z.boolean().default(false),
+  responsibilities: z.string().optional(),
+  added_at: z.string().optional(),
+  added_by: z.string().uuid().optional(),
+})
+
+// Deal forecasting schema
+export const DealForecastingSchema = z.object({
+  id: z.string().uuid().optional(),
+  deal_id: z.string().uuid(),
+  forecast_period: z.string(), // Date string
+  forecasted_value: z.number().min(0),
+  forecasted_close_date: z.string().optional(),
+  confidence_level: z.number().int().min(0).max(100).optional(),
+  forecast_category: z.string().optional(),
+  forecast_notes: z.string().optional(),
+  created_by: z.string().uuid().optional(),
+  created_at: z.string().optional(),
+})
+
+// Deal notification schema
+export const DealNotificationSchema = z.object({
+  id: z.string().uuid().optional(),
+  deal_id: z.string().uuid(),
+  notification_type: z.string().min(1, 'Notification type is required'),
+  recipient_id: z.string().uuid(),
+  message: z.string().min(1, 'Message is required'),
+  is_read: z.boolean().default(false),
+  action_required: z.boolean().default(false),
+  action_url: z.string().optional(),
+  scheduled_for: z.string().optional(),
+  sent_at: z.string().optional(),
+  created_at: z.string().optional(),
+})
