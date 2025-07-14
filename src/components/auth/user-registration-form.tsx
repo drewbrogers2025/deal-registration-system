@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Textarea } from '@/components/ui/textarea'
-import { UserRegistrationSchema, ResellerRegistrationSchema, StaffRegistrationSchema } from '@/lib/types'
+import {  ResellerRegistrationSchema, StaffRegistrationSchema } from '@/lib/types'
 import { UserPlus, Building2, Shield, Users } from 'lucide-react'
 import type { UserType } from '@/lib/types'
 
@@ -91,7 +91,7 @@ export function UserRegistrationForm({ userType, onSuccess }: UserRegistrationFo
         })
       }
       return true
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.errors?.[0]?.message || 'Please check your input')
       return false
     }
@@ -110,7 +110,7 @@ export function UserRegistrationForm({ userType, onSuccess }: UserRegistrationFo
       const supabase = createClientComponentClient()
 
       // Send magic link
-      const { data, error } = await supabase.auth.signInWithOtp({
+      const { error } = await supabase.auth.signInWithOtp({
         email: formData.email,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/verify`,
@@ -133,7 +133,7 @@ export function UserRegistrationForm({ userType, onSuccess }: UserRegistrationFo
       }
 
       setSuccess('Magic link sent! Check your email and click the link to complete registration.')
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Magic link error:', err)
       setError('An unexpected error occurred during magic link signup')
     } finally {
@@ -324,7 +324,7 @@ export function UserRegistrationForm({ userType, onSuccess }: UserRegistrationFo
             }
 
             console.log('🏢 Creating reseller company:', resellerData)
-            const { data: resellerResult, error: resellerError } = await supabase
+            const { error: resellerError } = await supabase
               .from('resellers')
               .insert(resellerData)
               .select()
@@ -350,7 +350,7 @@ export function UserRegistrationForm({ userType, onSuccess }: UserRegistrationFo
             }, 2000)
           }
 
-        } catch (profileErr: any) {
+        } catch (profileErr: unknown) {
           console.error('💥 Profile creation error:', profileErr)
           setError(`Failed to create user profile: ${profileErr.message}`)
         }
@@ -366,7 +366,7 @@ export function UserRegistrationForm({ userType, onSuccess }: UserRegistrationFo
       setLoading(false)
       return
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('💥 Unexpected registration error:', err)
       setError(`An unexpected error occurred during registration: ${err.message}`)
     } finally {

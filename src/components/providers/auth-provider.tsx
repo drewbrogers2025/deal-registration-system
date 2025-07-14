@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import { createClientComponentClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
-import type { AuthUser, UserType, ApprovalStatus } from '@/lib/types'
+import type { AuthUser, UserType } from '@/lib/types'
 
 type AuthContextType = {
   user: User | null
@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       // Get auth user data for email
-      const { data: { user: authUser } } = await supabase.auth.getUser()
+      const { data: { user: currentAuthUser } } = await supabase.auth.getUser()
 
       // Get user data from users table
       const { data: userData, error: userError } = await supabase
@@ -171,7 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     )
 
     return () => subscription.unsubscribe()
-  }, [supabase, router])
+  }, [supabase, router, fetchUserProfile])
 
   const signOut = async () => {
     if (supabase) {

@@ -1,5 +1,5 @@
 import { createServerComponentClient } from '@/lib/supabase'
-import type { UserType, ApprovalStatus, AuthUser } from '@/lib/types'
+import type { UserType, AuthUser } from '@/lib/types'
 
 /**
  * Server-side function to get user profile with role information
@@ -177,7 +177,7 @@ export const ROUTE_PERMISSIONS = {
 /**
  * Check if user can access a specific route
  */
-export function canAccessRoute(authUser: AuthUser | null, pathname: string): boolean {
+export function canAccessRoute(authUser: AuthUser | null): boolean {
   // Public routes
   if (pathname.startsWith('/auth/')) {
     return true
@@ -212,7 +212,7 @@ export function canAccessRoute(authUser: AuthUser | null, pathname: string): boo
 /**
  * Get redirect path for unauthorized users
  */
-export function getRedirectPath(authUser: AuthUser | null, pathname: string): string {
+export function getRedirectPath(authUser: AuthUser | null): string {
   if (!authUser) {
     return '/auth/login'
   }

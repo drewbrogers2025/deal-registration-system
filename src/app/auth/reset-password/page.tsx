@@ -55,7 +55,7 @@ export default function ResetPasswordPage() {
       } else {
         setSuccess('Password reset email sent! Please check your inbox.')
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError('An unexpected error occurred')
     } finally {
       setLoading(false)
@@ -96,7 +96,7 @@ export default function ResetPasswordPage() {
           router.push('/auth/login?message=Password updated successfully')
         }, 2000)
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError('An unexpected error occurred')
     } finally {
       setLoading(false)
@@ -248,7 +248,7 @@ export default function ResetPasswordPage() {
           
           <div className="text-xs text-gray-500">
             <p>
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <Link href="/auth/register" className="text-blue-600 hover:text-blue-500">
                 Sign up here
               </Link>

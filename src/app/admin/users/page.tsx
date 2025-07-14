@@ -71,7 +71,7 @@ export default function UserManagementPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | ApprovalStatus['_type']>('all')
   const [typeFilter, setTypeFilter] = useState<'all' | UserType['_type']>('all')
-  const [selectedUser, setSelectedUser] = useState<UserWithProfile | null>(null)
+  // const [selectedUser, setSelectedUser] = useState<UserWithProfile | null>(null)
   const [actionDialog, setActionDialog] = useState<{
     open: boolean
     action: 'approve' | 'reject' | 'edit' | null
@@ -109,9 +109,9 @@ export default function UserManagementPage() {
       }
 
       setUsers(usersData || [])
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching users:', err)
-      setError(err.message || 'Failed to fetch users')
+      setError(err instanceof Error ? err.message : 'Failed to fetch users')
     } finally {
       setLoading(false)
     }
@@ -119,11 +119,11 @@ export default function UserManagementPage() {
 
   useEffect(() => {
     fetchUsers()
-  }, [])
+  }, [fetchUsers])
 
-  const handleUserAction = async (action: 'approve' | 'reject', userId: string, reason?: string) => {
+  const handleUserAction = async (action: 'approve' | 'reject', userId: string, _reason?: string) => {
     try {
-      const updates: any = {
+      const updates: Record<string, unknown> = {
         approval_status: action === 'approve' ? 'approved' : 'rejected',
         approved_at: action === 'approve' ? new Date().toISOString() : null,
       }
@@ -145,9 +145,9 @@ export default function UserManagementPage() {
       
       // TODO: Send email notification to user
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error updating user:', err)
-      setError(err.message || 'Failed to update user')
+      setError(err instanceof Error ? err.message : 'Failed to update user')
     }
   }
 

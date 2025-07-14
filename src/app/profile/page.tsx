@@ -12,10 +12,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
+   
+   
+   
+   
   SelectValue 
 } from '@/components/ui/select'
 import { 
@@ -76,7 +76,7 @@ export default function ProfilePage() {
         fetchResellerCompanyData(authUser.reseller_user.reseller_id)
       }
     }
-  }, [authUser])
+  }, [authUser, fetchResellerCompanyData])
 
   const fetchResellerCompanyData = async (resellerId: string) => {
     try {
@@ -177,7 +177,7 @@ export default function ProfilePage() {
       setSuccess('Profile updated successfully!')
       setEditing(false)
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error updating profile:', err)
       setError(err.message || 'Failed to update profile')
     } finally {

@@ -63,7 +63,7 @@ export default function DebugAuthPage() {
         }
       }
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       addResult(`💥 Exception: ${err.message}`)
     } finally {
       setLoading(false)
@@ -85,7 +85,7 @@ export default function DebugAuthPage() {
       addResult(`🔐 Signin user: ${data.user?.id || 'null'}`)
       addResult(`🔐 Signin session: ${data.session ? 'exists' : 'null'}`)
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       addResult(`💥 Signin exception: ${err.message}`)
     } finally {
       setLoading(false)

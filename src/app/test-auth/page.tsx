@@ -23,7 +23,7 @@ export default function TestAuthPage() {
     setMessage('')
 
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -79,7 +79,7 @@ export default function TestAuthPage() {
           }
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(`Unexpected error: ${err.message}`)
     } finally {
       setLoading(false)
@@ -102,7 +102,7 @@ export default function TestAuthPage() {
       } else {
         setMessage(`Login successful! User: ${data.user?.email}`)
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(`Unexpected error: ${err.message}`)
     } finally {
       setLoading(false)
@@ -127,7 +127,7 @@ export default function TestAuthPage() {
       } else {
         setMessage('Magic link sent! Check your email.')
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(`Unexpected error: ${err.message}`)
     } finally {
       setLoading(false)
@@ -146,7 +146,7 @@ export default function TestAuthPage() {
       } else {
         setMessage('Signed out successfully!')
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(`Unexpected error: ${err.message}`)
     } finally {
       setLoading(false)
