@@ -3,11 +3,11 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = createServerComponentClient()
-    const resellerId = params.id
+    const { id: resellerId } = await params
     const body = await request.json()
     const { action, reason } = body // action: 'approve' | 'reject'
 
@@ -186,11 +186,11 @@ export async function POST(
 // Get approval history
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = createServerComponentClient()
-    const resellerId = params.id
+    const { id: resellerId } = await params
 
     // Get reseller with approval information
     const { data: reseller, error } = await supabase

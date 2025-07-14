@@ -99,7 +99,7 @@ export default function ProfilePage() {
           tax_id: resellerData.tax_id || '',
         }))
       }
-    } catch (err) {
+    } catch (_err) {
       console.error('Error fetching reseller company data:', err)
     }
   }

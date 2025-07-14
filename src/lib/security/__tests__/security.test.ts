@@ -402,7 +402,7 @@ describe('Security Integration Tests', () => {
     expect(result1.allowed).toBe(true)
 
     // Second request should be blocked (if using memory store)
-    const _result2 = await rateLimitService.checkRateLimit(mockRequest, 1, 60000)
+    const result2 = await rateLimitService.checkRateLimit(mockRequest, 1, 60000)
     // Note: This might pass if using database store, depending on implementation
   })
 })

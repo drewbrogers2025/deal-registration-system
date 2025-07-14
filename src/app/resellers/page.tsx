@@ -40,7 +40,7 @@ export default function ResellersPage() {
       } else {
         setError('Failed to fetch resellers')
       }
-    } catch (err) {
+    } catch (_err) {
       setError('Error loading resellers')
       console.error('Error fetching resellers:', err)
     } finally {

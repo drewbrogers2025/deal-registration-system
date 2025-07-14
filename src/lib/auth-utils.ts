@@ -6,7 +6,7 @@ import type { UserType, AuthUser } from '@/lib/types'
  */
 export async function getServerAuthUser(): Promise<AuthUser | null> {
   try {
-    const supabase = createServerComponentClient()
+    // const supabase = createServerComponentClient()
     
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     

@@ -4,7 +4,7 @@ import { NotificationService } from '@/lib/notification-service'
 
 export async function GET(request: NextRequest) {
   try {
-    // const supabase = createServerComponentClient()
+    const supabase = createServerComponentClient()
     const { searchParams } = new URL(request.url)
     
     // TODO: Get user ID from auth context
@@ -60,26 +60,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const notificationService = new NotificationService()
-    const result = await notificationService.sendNotification({
-      type,
-      recipientId: recipient_id,
+    const result = await NotificationService.createNotification({
+      user_id: recipient_id,
       title,
       message,
-      relatedDealId: related_deal_id,
-      actionUrl: action_url
+      type
     })
-
-    if (!result.success) {
-      return NextResponse.json(
-        { error: result.error },
-        { status: 500 }
-      )
-    }
 
     return NextResponse.json({
       success: true,
-      error: null
+      notification: result
     }, { status: 201 })
 
   } catch (error) {
@@ -93,7 +83,7 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    // const supabase = createServerComponentClient()
+    const supabase = createServerComponentClient()
     const body = await request.json()
     const { notification_id, action } = body
 
@@ -104,28 +94,13 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    const notificationService = new NotificationService()
-
     if (action === 'mark_read') {
-      const result = await notificationService.markAsRead(notification_id)
-      
-      if (!result.success) {
-        return NextResponse.json(
-          { error: 'Failed to mark notification as read' },
-          { status: 500 }
-        )
-      }
+      await NotificationService.markAsRead(notification_id)
+      return NextResponse.json({ success: true })
     } else if (action === 'mark_all_read') {
-      // TODO: Get user ID from auth context
       const userId = body.user_id || 'placeholder-user-id'
-      const result = await notificationService.markAllAsRead(userId)
-      
-      if (!result.success) {
-        return NextResponse.json(
-          { error: 'Failed to mark all notifications as read' },
-          { status: 500 }
-        )
-      }
+      await NotificationService.markAllAsRead(userId)
+      return NextResponse.json({ success: true })
     } else {
       return NextResponse.json(
         { error: 'Invalid action. Supported actions: mark_read, mark_all_read' },

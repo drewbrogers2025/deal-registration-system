@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
 
     // 3. Create deal products if provided
     if (body.products && body.products.length > 0) {
-      const dealProducts = body.products.map((product: unknown) => ({
+      const dealProducts = body.products.map((product: Record<string, unknown>) => ({
         ...product,
         deal_id: insertedDeal.id,
       }))
@@ -218,7 +218,7 @@ export async function POST(request: NextRequest) {
         deal_id: insertedDeal.id,
         activity_type: 'deal_created',
         activity_subject: 'Deal Created',
-        activity_description: `Deal "${dealData.deal_name}" was created`,
+        activity_description: `Deal was created`,
         outcome: 'positive',
         created_by: body.created_by, // Should come from auth context
       })
@@ -234,7 +234,7 @@ export async function POST(request: NextRequest) {
       .insert({
         deal_id: insertedDeal.id,
         from_stage: null,
-        to_stage: dealData.opportunity_stage || 'lead',
+        to_stage: 'lead',
         changed_by: body.created_by,
         change_reason: 'Initial deal creation',
       })
@@ -287,7 +287,7 @@ export async function PUT(request: NextRequest) {
     const validatedData = validation.data
 
     // Get current deal for stage change tracking
-    const { data: currentDeal } = await supabase
+    const { data: _currentDeal } = await supabase
       .from('deals')
       .select('opportunity_stage')
       .eq('id', id)

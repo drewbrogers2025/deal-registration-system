@@ -57,7 +57,7 @@ export function SecurityDashboard() {
       const eventsData = await eventsResponse.json()
       setEvents(eventsData.data.items || [])
 
-    } catch (err) {
+    } catch (_err) {
       console.error('Error fetching security data:', err)
       setError(err instanceof Error ? err.message : 'Unknown error')
     } finally {

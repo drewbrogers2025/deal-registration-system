@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       // Get auth user data for email
-      const { data: { user: _currentAuthUser } } = await supabase.auth.getUser()
+      const { data: { user: currentAuthUser } } = await supabase.auth.getUser()
 
       // Get user data from users table
       const { data: userData, error: userError } = await supabase

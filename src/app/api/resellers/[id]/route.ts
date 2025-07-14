@@ -4,11 +4,11 @@ import { ResellerSchema } from '@/lib/types'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = createServerComponentClient()
-    const resellerId = params.id
+    const { id: resellerId } = await params
     const { searchParams } = new URL(request.url)
     const includeRelations = searchParams.get('include_relations') === 'true'
 
@@ -65,11 +65,11 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = createServerComponentClient()
-    const resellerId = params.id
+    const { id: resellerId } = await params
     const body = await request.json()
 
     // Validate request body
@@ -125,11 +125,11 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = createServerComponentClient()
-    const resellerId = params.id
+    const { id: resellerId } = await params
 
     // Check if reseller exists
     const { data: reseller, error: fetchError } = await supabase

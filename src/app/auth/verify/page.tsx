@@ -53,7 +53,7 @@ export default function VerifyEmailPage() {
           setVerificationStatus('error')
           setMessage('Verification failed. Please try again.')
         }
-      } catch (err) {
+      } catch (_err) {
         console.error('Unexpected error:', err)
         setVerificationStatus('error')
         setMessage('An unexpected error occurred during verification.')

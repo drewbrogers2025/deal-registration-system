@@ -69,8 +69,8 @@ export default function UserManagementPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'all' | ApprovalStatus['_type']>('all')
-  const [typeFilter, setTypeFilter] = useState<'all' | UserType['_type']>('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
+  const [typeFilter, setTypeFilter] = useState<'all' | 'site_admin' | 'vendor_user' | 'reseller'>('all')
   // const [selectedUser, setSelectedUser] = useState<UserWithProfile | null>(null)
   const [actionDialog, setActionDialog] = useState<{
     open: boolean
@@ -121,7 +121,7 @@ export default function UserManagementPage() {
     fetchUsers()
   }, [fetchUsers])
 
-  const handleUserAction = async (action: 'approve' | 'reject', userId: string, _reason?: string) => {
+  const handleUserAction = async (action: 'approve' | 'reject', userId: string) => {
     try {
       const updates: Record<string, unknown> = {
         approval_status: action === 'approve' ? 'approved' : 'rejected',
@@ -152,8 +152,8 @@ export default function UserManagementPage() {
   }
 
   const filteredUsers = users.filter(user => {
-    const matchesSearch = 
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch =
+      (user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase())
     
     const matchesStatus = statusFilter === 'all' || user.approval_status === statusFilter
@@ -162,7 +162,7 @@ export default function UserManagementPage() {
     return matchesSearch && matchesStatus && matchesType
   })
 
-  const getUserTypeIcon = (type: UserType['_type']) => {
+  const getUserTypeIcon = (type: 'site_admin' | 'vendor_user' | 'reseller') => {
     switch (type) {
       case 'site_admin':
         return <Shield className="h-4 w-4" />
@@ -173,7 +173,7 @@ export default function UserManagementPage() {
     }
   }
 
-  const getUserTypeLabel = (type: UserType['_type']) => {
+  const getUserTypeLabel = (type: 'site_admin' | 'vendor_user' | 'reseller') => {
     switch (type) {
       case 'site_admin':
         return 'Site Admin'
@@ -184,7 +184,7 @@ export default function UserManagementPage() {
     }
   }
 
-  const getStatusBadge = (status: ApprovalStatus['_type']) => {
+  const getStatusBadge = (status: 'pending' | 'approved' | 'rejected') => {
     switch (status) {
       case 'approved':
         return <Badge className="bg-green-100 text-green-800"><CheckCircle className="h-3 w-3 mr-1" />Approved</Badge>
@@ -231,7 +231,7 @@ export default function UserManagementPage() {
                 />
               </div>
               
-              <Select value={statusFilter} onValueChange={(value: unknown) => setStatusFilter(value)}>
+              <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as 'all' | 'pending' | 'approved' | 'rejected')}>
                 <SelectTrigger>
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
@@ -243,7 +243,7 @@ export default function UserManagementPage() {
                 </SelectContent>
               </Select>
 
-              <Select value={typeFilter} onValueChange={(value: unknown) => setTypeFilter(value)}>
+              <Select value={typeFilter} onValueChange={(value) => setTypeFilter(value as 'all' | 'site_admin' | 'vendor_user' | 'reseller')}>
                 <SelectTrigger>
                   <SelectValue placeholder="Filter by type" />
                 </SelectTrigger>
@@ -307,12 +307,9 @@ export default function UserManagementPage() {
                         )}
                         {user.reseller_user && (
                           <div>
-                            <div>Compunknown: {user.reseller_user.reseller?.name}</div>
+                            <div>Company: {user.reseller_user.reseller?.name}</div>
                             <div>Territory: {user.reseller_user.reseller?.territory}</div>
                           </div>
-                        )}
-                        {user.compunknown_position && (
-                          <div>Position: {user.compunknown_position}</div>
                         )}
                       </div>
                     </TableCell>

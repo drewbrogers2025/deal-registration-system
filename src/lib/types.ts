@@ -18,6 +18,18 @@ export const RevenueRange = z.enum(['under_1m', '1m_5m', '5m_25m', '25m_100m', '
 export const UserType = z.enum(['site_admin', 'vendor_user', 'reseller'])
 export const ApprovalStatus = z.enum(['pending', 'approved', 'rejected'])
 
+// Basic User schema
+export const UserSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email(),
+  name: z.string().optional(),
+  phone: z.string().optional(),
+  user_type: UserType,
+  approval_status: ApprovalStatus.default('pending'),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+})
+
 // Enhanced reseller schema with comprehensive company information
 export const ResellerSchema = z.object({
   id: z.string().uuid().optional(),
@@ -273,6 +285,7 @@ export type Product = z.infer<typeof ProductSchema>
 export type Deal = z.infer<typeof DealSchema>
 export type DealProduct = z.infer<typeof DealProductSchema>
 export type DealConflict = z.infer<typeof DealConflictSchema>
+export type User = z.infer<typeof UserSchema>
 export type StaffUser = z.infer<typeof StaffUserSchema>
 export type CreateDeal = z.infer<typeof CreateDealSchema>
 export type AssignDeal = z.infer<typeof AssignDealSchema>

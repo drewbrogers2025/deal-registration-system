@@ -38,7 +38,7 @@ export default function EndUsersPage() {
       } else {
         setError('Failed to fetch end users')
       }
-    } catch (err) {
+    } catch (_err) {
       setError('Error loading end users')
       console.error('Error fetching end users:', err)
     } finally {

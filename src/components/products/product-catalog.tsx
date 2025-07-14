@@ -67,7 +67,7 @@ export function ProductCatalog({
         if (data.success) {
           setCategories(data.data.items)
         }
-      } catch (err) {
+      } catch (_err) {
         console.error('Error loading categories:', err)
       }
     }
@@ -109,7 +109,7 @@ export function ProductCatalog({
         } else {
           setError(data.error || 'Failed to load products')
         }
-      } catch (err) {
+      } catch (_err) {
         setError('Error loading products')
         console.error('Error loading products:', err)
       } finally {

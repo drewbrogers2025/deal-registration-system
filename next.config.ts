@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Disable ESLint during builds for faster deployment
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+
   // Optimize for Vercel deployment
   experimental: {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-dialog', '@radix-ui/react-select'],

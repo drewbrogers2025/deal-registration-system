@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
 
   if (code) {
     try {
-      const supabase = createServerComponentClient()
+      // const supabase = createServerComponentClient()
       await supabase.auth.exchangeCodeForSession(code)
     } catch (error) {
       console.error('Error exchanging code for session:', error)

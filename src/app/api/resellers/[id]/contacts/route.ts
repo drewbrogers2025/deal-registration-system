@@ -4,11 +4,11 @@ import { ResellerContactSchema } from '@/lib/types'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = createServerComponentClient()
-    const resellerId = params.id
+    const { id: resellerId } = await params
 
     const { data: contacts, error } = await supabase
       .from('reseller_contacts')
@@ -40,11 +40,11 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = createServerComponentClient()
-    const resellerId = params.id
+    const { id: resellerId } = await params
     const body = await request.json()
 
     // Add reseller_id to the body
@@ -105,11 +105,11 @@ export async function POST(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = createServerComponentClient()
-    const resellerId = params.id
+    const { id: resellerId } = await params
     const body = await request.json()
     const { contactId, ...updateData } = body
 
@@ -178,11 +178,11 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = createServerComponentClient()
-    const resellerId = params.id
+    const { id: resellerId } = await params
     const { searchParams } = new URL(request.url)
     const contactId = searchParams.get('contactId')
 

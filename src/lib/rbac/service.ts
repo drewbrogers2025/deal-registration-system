@@ -18,7 +18,7 @@ export class RBACService {
    * Check if a user has a specific permission
    */
   async hasPermission(
-    _userId: string, 
+    userId: string, 
     check: PermissionCheck, 
     context?: PermissionContext
   ): Promise<PermissionResult> {
@@ -27,7 +27,7 @@ export class RBACService {
       const { data: userPermissions, error } = await this.supabase
         .from('user_permissions')
         .select('*')
-        .eq('user_id', _userId)
+        .eq('user_id', userId)
         .eq('resource_type', check.resource)
         .eq('action', check.action)
         .eq('role_active', true)
@@ -44,7 +44,7 @@ export class RBACService {
       // Check context-based conditions if provided
       if (context && check.resourceId) {
         const contextResult = await this.checkContextualPermissions(
-          _userId, 
+          userId, 
           check, 
           context
         )
@@ -64,14 +64,14 @@ export class RBACService {
    * Check multiple permissions at once
    */
   async hasPermissions(
-    _userId: string, 
+    userId: string, 
     checks: BulkPermissionCheck
   ): Promise<BulkPermissionResult> {
     const results: Record<string, PermissionResult> = {}
     
     for (const [index, check] of checks.permissions.entries()) {
       const key = `${check.resource}.${check.action}.${index}`
-      results[key] = await this.hasPermission(_userId, check, checks.context)
+      results[key] = await this.hasPermission(userId, check, checks.context)
     }
 
     const hasAnyPermission = Object.values(results).some(r => r.allowed)
@@ -87,11 +87,11 @@ export class RBACService {
   /**
    * Get all permissions for a user
    */
-  async getUserPermissions(_userId: string): Promise<Permission[]> {
+  async getUserPermissions(userId: string): Promise<Permission[]> {
     const { data, error } = await this.supabase
       .from('user_permissions')
       .select('permission_name, resource_type, action')
-      .eq('user_id', _userId)
+      .eq('user_id', userId)
       .eq('role_active', true)
 
     if (error) {
@@ -109,11 +109,11 @@ export class RBACService {
   /**
    * Get user with roles and permissions
    */
-  async getUserWithRoles(_userId: string): Promise<UserWithRoles | null> {
+  async getUserWithRoles(userId: string): Promise<UserWithRoles | null> {
     const { data: user, error: userError } = await this.supabase
       .from('staff_users')
       .select('id, email, name')
-      .eq('id', _userId)
+      .eq('id', userId)
       .single()
 
     if (userError || !user) {
@@ -131,7 +131,7 @@ export class RBACService {
           )
         )
       `)
-      .eq('user_id', _userId)
+      .eq('user_id', userId)
       .eq('is_active', true)
 
     if (rolesError) {
@@ -149,7 +149,7 @@ export class RBACService {
    * Assign role to user
    */
   async assignRole(
-    _userId: string, 
+    userId: string, 
     roleId: string, 
     assignedBy: string,
     expiresAt?: string
@@ -158,7 +158,7 @@ export class RBACService {
       const { error } = await this.supabase
         .from('user_roles')
         .insert({
-          user_id: _userId,
+          user_id: userId,
           role_id: roleId,
           assigned_by: assignedBy,
           expires_at: expiresAt
@@ -170,7 +170,7 @@ export class RBACService {
       }
 
       // Log the role assignment
-      await this.logAuditEvent(assignedBy, 'permission_change', 'staff_users', _userId, {
+      await this.logAuditEvent(assignedBy, 'permission_change', 'staff_users', userId, {
         action: 'role_assigned',
         role_id: roleId,
         expires_at: expiresAt
@@ -186,12 +186,12 @@ export class RBACService {
   /**
    * Remove role from user
    */
-  async removeRole(_userId: string, roleId: string, removedBy: string): Promise<boolean> {
+  async removeRole(userId: string, roleId: string, removedBy: string): Promise<boolean> {
     try {
       const { error } = await this.supabase
         .from('user_roles')
         .update({ is_active: false })
-        .eq('user_id', _userId)
+        .eq('user_id', userId)
         .eq('role_id', roleId)
 
       if (error) {
@@ -200,7 +200,7 @@ export class RBACService {
       }
 
       // Log the role removal
-      await this.logAuditEvent(removedBy, 'permission_change', 'staff_users', _userId, {
+      await this.logAuditEvent(removedBy, 'permission_change', 'staff_users', userId, {
         action: 'role_removed',
         role_id: roleId
       })
@@ -273,17 +273,17 @@ export class RBACService {
    * Check contextual permissions (e.g., own data vs all data)
    */
   private async checkContextualPermissions(
-    _userId: string,
+    userId: string,
     check: PermissionCheck,
     context: PermissionContext
   ): Promise<PermissionResult> {
     // Example: Users can only modify their own data unless they have elevated permissions
     if (check.action === 'update' || check.action === 'delete') {
       // Check if user is trying to modify their own data
-      if (context.resourceOwnerId && context.resourceOwnerId !== _userId) {
+      if (context.resourceOwnerId && context.resourceOwnerId !== userId) {
         // Check if user has elevated permissions for this resource
         const hasElevatedPermission = await this.hasElevatedPermission(
-          _userId, 
+          userId, 
           check.resource
         )
         
@@ -298,9 +298,9 @@ export class RBACService {
 
     // Territory-based permissions
     if (context.territory && check.resource === 'deals') {
-      const userTerritory = await this.getUserTerritory(_userId)
+      const userTerritory = await this.getUserTerritory(userId)
       if (userTerritory && userTerritory !== context.territory) {
-        const hasGlobalAccess = await this.hasGlobalAccess(_userId)
+        const hasGlobalAccess = await this.hasGlobalAccess(userId)
         if (!hasGlobalAccess) {
           return { 
             allowed: false, 
@@ -316,11 +316,11 @@ export class RBACService {
   /**
    * Check if user has elevated permissions for a resource
    */
-  private async hasElevatedPermission(_userId: string, resource: string): Promise<boolean> {
+  private async hasElevatedPermission(userId: string, resource: string): Promise<boolean> {
     const { data } = await this.supabase
       .from('user_permissions')
       .select('role_name')
-      .eq('user_id', _userId)
+      .eq('user_id', userId)
       .eq('resource_type', resource)
       .in('role_name', ['admin', 'manager'])
       .eq('role_active', true)
@@ -331,7 +331,7 @@ export class RBACService {
   /**
    * Get user's territory
    */
-  private async getUserTerritory(_userId: string): Promise<string | null> {
+  private async getUserTerritory(userId: string): Promise<string | null> {
     // This would depend on how territories are assigned to users
     // For now, return null (implement based on your business logic)
     return null
@@ -340,11 +340,11 @@ export class RBACService {
   /**
    * Check if user has global access
    */
-  private async hasGlobalAccess(_userId: string): Promise<boolean> {
+  private async hasGlobalAccess(userId: string): Promise<boolean> {
     const { data } = await this.supabase
       .from('user_permissions')
       .select('role_name')
-      .eq('user_id', _userId)
+      .eq('user_id', userId)
       .in('role_name', ['admin', 'manager'])
       .eq('role_active', true)
 
@@ -355,7 +355,7 @@ export class RBACService {
    * Log audit event
    */
   private async logAuditEvent(
-    _userId: string,
+    userId: string,
     action: string,
     resourceType?: string,
     resourceId?: string,
@@ -363,7 +363,7 @@ export class RBACService {
   ): Promise<void> {
     try {
       await this.supabase.rpc('log_audit_event', {
-        p_user_id: _userId,
+        p_user_id: userId,
         p_action: action,
         p_resource_type: resourceType,
         p_resource_id: resourceId,

@@ -13,15 +13,15 @@ import type {
 } from './types'
 
 /**
- * Hook to check if current _user has a specific permission
+ * Hook to check if current user has a specific permission
  */
 export function usePermission(check: PermissionCheck) {
-  const { _user } = useAuth()
+  const { user } = useAuth()
   const [result, setResult] = useState<PermissionResult>({ allowed: false })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!_user?.id) {
+    if (!user?.id) {
       setResult({ allowed: false, reason: 'User not authenticated' })
       setLoading(false)
       return
@@ -30,7 +30,7 @@ export function usePermission(check: PermissionCheck) {
     const checkPermission = async () => {
       setLoading(true)
       try {
-        const permissionResult = await rbacService.hasPermission(_user.id, check)
+        const permissionResult = await rbacService.hasPermission(user.id, check)
         setResult(permissionResult)
       } catch (error) {
         console.error('Permission check failed:', error)
@@ -41,7 +41,7 @@ export function usePermission(check: PermissionCheck) {
     }
 
     checkPermission()
-  }, [_user?.id, check.resource, check.action, check.resourceId])
+  }, [user?.id, check.resource, check.action, check.resourceId])
 
   return { ...result, loading }
 }
@@ -50,7 +50,7 @@ export function usePermission(check: PermissionCheck) {
  * Hook to check multiple permissions at once
  */
 export function usePermissions(checks: PermissionCheck[]) {
-  const { _user } = useAuth()
+  const { user } = useAuth()
   const [result, setResult] = useState<BulkPermissionResult>({
     results: {},
     hasAnyPermission: false,
@@ -59,7 +59,7 @@ export function usePermissions(checks: PermissionCheck[]) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!_user?.id) {
+    if (!user?.id) {
       setResult({
         results: {},
         hasAnyPermission: false,
@@ -74,9 +74,9 @@ export function usePermissions(checks: PermissionCheck[]) {
       try {
         const bulkCheck: BulkPermissionCheck = {
           permissions: checks,
-          context: { _userId: _user.id, _userRoles: [] }
+          context: { userId: user.id, userRoles: [] }
         }
-        const permissionResult = await rbacService.hasPermissions(_user.id, bulkCheck)
+        const permissionResult = await rbacService.hasPermissions(user.id, bulkCheck)
         setResult(permissionResult)
       } catch (error) {
         console.error('Permissions check failed:', error)
@@ -91,21 +91,21 @@ export function usePermissions(checks: PermissionCheck[]) {
     }
 
     checkPermissions()
-  }, [_user?.id, JSON.stringify(checks)])
+  }, [user?.id, JSON.stringify(checks)])
 
   return { ...result, loading }
 }
 
 /**
- * Hook to get all _user permissions
+ * Hook to get all user permissions
  */
 export function useUserPermissions() {
-  const { _user } = useAuth()
+  const { user } = useAuth()
   const [permissions, setPermissions] = useState<Permission[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!_user?.id) {
+    if (!user?.id) {
       setPermissions([])
       setLoading(false)
       return
@@ -114,10 +114,10 @@ export function useUserPermissions() {
     const fetchPermissions = async () => {
       setLoading(true)
       try {
-        const _userPermissions = await rbacService.getUserPermissions(_user.id)
-        setPermissions(_userPermissions)
+        const userPermissions = await rbacService.getUserPermissions(user.id)
+        setPermissions(userPermissions)
       } catch (error) {
-        console.error('Failed to fetch _user permissions:', error)
+        console.error('Failed to fetch user permissions:', error)
         setPermissions([])
       } finally {
         setLoading(false)
@@ -125,21 +125,21 @@ export function useUserPermissions() {
     }
 
     fetchPermissions()
-  }, [_user?.id])
+  }, [user?.id])
 
   return { permissions, loading }
 }
 
 /**
- * Hook to get _user with roles and permissions
+ * Hook to get user with roles and permissions
  */
 export function useUserWithRoles() {
-  const { _user } = useAuth()
-  const [_userWithRoles, setUserWithRoles] = useState<UserWithRoles | null>(null)
+  const { user } = useAuth()
+  const [userWithRoles, setUserWithRoles] = useState<UserWithRoles | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!_user?.id) {
+    if (!user?.id) {
       setUserWithRoles(null)
       setLoading(false)
       return
@@ -148,10 +148,10 @@ export function useUserWithRoles() {
     const fetchUserWithRoles = async () => {
       setLoading(true)
       try {
-        const _userData = await rbacService.getUserWithRoles(_user.id)
-        setUserWithRoles(_userData)
+        const userData = await rbacService.getUserWithRoles(user.id)
+        setUserWithRoles(userData)
       } catch (error) {
-        console.error('Failed to fetch _user with roles:', error)
+        console.error('Failed to fetch user with roles:', error)
         setUserWithRoles(null)
       } finally {
         setLoading(false)
@@ -159,28 +159,28 @@ export function useUserWithRoles() {
     }
 
     fetchUserWithRoles()
-  }, [_user?.id])
+  }, [user?.id])
 
-  return { _userWithRoles, loading }
+  return { userWithRoles, loading }
 }
 
 /**
  * Hook for role management operations
  */
 export function useRoleManagement() {
-  const { _user } = useAuth()
+  const { user } = useAuth()
   const [loading, setLoading] = useState(false)
 
   const assignRole = useCallback(async (
-    _userId: string, 
+    userId: string, 
     roleId: string, 
     expiresAt?: string
   ) => {
-    if (!_user?.id) return false
+    if (!user?.id) return false
 
     setLoading(true)
     try {
-      const success = await rbacService.assignRole(_userId, roleId, _user.id, expiresAt)
+      const success = await rbacService.assignRole(userId, roleId, user.id, expiresAt)
       return success
     } catch (error) {
       console.error('Failed to assign role:', error)
@@ -188,14 +188,14 @@ export function useRoleManagement() {
     } finally {
       setLoading(false)
     }
-  }, [_user?.id])
+  }, [user?.id])
 
-  const removeRole = useCallback(async (_userId: string, roleId: string) => {
-    if (!_user?.id) return false
+  const removeRole = useCallback(async (userId: string, roleId: string) => {
+    if (!user?.id) return false
 
     setLoading(true)
     try {
-      const success = await rbacService.removeRole(_userId, roleId, _user.id)
+      const success = await rbacService.removeRole(userId, roleId, user.id)
       return success
     } catch (error) {
       console.error('Failed to remove role:', error)
@@ -203,13 +203,13 @@ export function useRoleManagement() {
     } finally {
       setLoading(false)
     }
-  }, [_user?.id])
+  }, [user?.id])
 
   return { assignRole, removeRole, loading }
 }
 
 /**
- * Hook to check if _user can perform action on specific resource
+ * Hook to check if user can perform action on specific resource
  */
 export function useCanAccess(
   resource: string, 
@@ -229,7 +229,7 @@ export function useCanAccess(
  * Hook for common permission patterns
  */
 export function useCommonPermissions() {
-  const { _user } = useAuth()
+  const { user } = useAuth()
 
   const canCreateDeals = usePermission({
     resource: 'deals',
@@ -237,7 +237,7 @@ export function useCommonPermissions() {
   })
 
   const canManageUsers = usePermission({
-    resource: 'staff__users',
+    resource: 'staff_users',
     action: 'create'
   })
 
@@ -249,7 +249,7 @@ export function useCommonPermissions() {
   const canExportData = usePermissions([
     { resource: 'deals', action: 'export' },
     { resource: 'resellers', action: 'export' },
-    { resource: 'end__users', action: 'export' }
+    { resource: 'end_users', action: 'export' }
   ])
 
   const isAdmin = usePermission({
@@ -305,17 +305,17 @@ export function useConditionalRender() {
  * Hook for permission-based navigation
  */
 export function usePermissionBasedNavigation() {
-  const { _user } = useAuth()
+  const { user } = useAuth()
 
   const getAccessibleRoutes = useCallback(async () => {
-    if (!_user?.id) return []
+    if (!user?.id) return []
 
     const routePermissions = [
       { route: '/deals', permission: { resource: 'deals', action: 'read' } },
       { route: '/resellers', permission: { resource: 'resellers', action: 'read' } },
       { route: '/products', permission: { resource: 'products', action: 'read' } },
       { route: '/conflicts', permission: { resource: 'conflicts', action: 'read' } },
-      { route: '/_users', permission: { resource: 'staff__users', action: 'read' } },
+      { route: '/users', permission: { resource: 'staff_users', action: 'read' } },
       { route: '/audit', permission: { resource: 'audit_logs', action: 'read' } },
       { route: '/settings', permission: { resource: 'system_settings', action: 'read' } }
     ]
@@ -323,14 +323,14 @@ export function usePermissionBasedNavigation() {
     const accessibleRoutes = []
     
     for (const { route, permission } of routePermissions) {
-      const result = await rbacService.hasPermission(_user.id, permission as PermissionCheck)
+      const result = await rbacService.hasPermission(user.id, permission as PermissionCheck)
       if (result.allowed) {
         accessibleRoutes.push(route)
       }
     }
 
     return accessibleRoutes
-  }, [_user?.id])
+  }, [user?.id])
 
   return { getAccessibleRoutes }
 }

@@ -31,7 +31,7 @@ export class RateLimitService {
   ): Promise<RateLimitResult> {
     const key = identifier || this.generateKey(req)
     const now = Date.now()
-    const _windowStart = now - windowMs
+    const windowStart = now - windowMs
 
     try {
       // Use database for persistent rate limiting
@@ -287,7 +287,7 @@ export class RateLimitService {
     endpoint: string
   ): Promise<{
     requestsCount: number
-    _windowStart: string
+    windowStart: string
     blockedUntil?: string
   } | null> {
     try {
@@ -304,7 +304,7 @@ export class RateLimitService {
 
       return {
         requestsCount: data.requests_count,
-        _windowStart: data.window_start,
+        windowStart: data.window_start,
         blockedUntil: data.blocked_until
       }
 

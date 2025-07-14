@@ -103,7 +103,7 @@ export function InteractiveChart({
   onRefresh,
   loading = false,
 }: InteractiveChartProps) {
-  const [_isFullscreen, setIsFullscreen] = React.useState(false)
+  const [isFullscreen, setIsFullscreen] = React.useState(false)
   const chartRef = React.useRef<HTMLDivElement>(null)
 
   const colors = config.colors || defaultColors

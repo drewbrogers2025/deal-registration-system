@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: false,
       error: 'Internal server error',
-      details: err.message
+      details: err instanceof Error ? err.message : 'Unknown error'
     }, { status: 500 })
   }
 }
@@ -139,14 +139,17 @@ export async function PATCH(request: NextRequest) {
     } else if (action === 'update_profile') {
       // Allow updating specific profile fields
       const allowedFields = ['name', 'phone', 'company_position']
-      updates = Object.keys(updateData)
+      const profileUpdates = Object.keys(updateData)
         .filter(key => allowedFields.includes(key))
         .reduce((obj, key) => {
           obj[key] = updateData[key]
           return obj
-        }, {} as any)
-      
-      updates.updated_at = new Date().toISOString()
+        }, {} as Record<string, unknown>)
+
+      updates = {
+        ...profileUpdates,
+        updated_at: new Date().toISOString()
+      }
     } else {
       return NextResponse.json({
         success: false,
@@ -228,7 +231,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({
       success: false,
       error: 'Internal server error',
-      details: err.message
+      details: err instanceof Error ? err.message : 'Unknown error'
     }, { status: 500 })
   }
 }
@@ -289,7 +292,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({
       success: false,
       error: 'Internal server error',
-      details: err.message
+      details: err instanceof Error ? err.message : 'Unknown error'
     }, { status: 500 })
   }
 }

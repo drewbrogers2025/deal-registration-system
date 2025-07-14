@@ -16,11 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { 
   Building, 
   Calendar as CalendarIcon, 
-  DollarSign, 
   Target, 
-  Users, 
-  FileText,
-  AlertCircle,
   CheckCircle
 } from 'lucide-react'
 import { format } from 'date-fns'
@@ -29,7 +25,7 @@ import { cn } from '@/lib/utils'
 interface EnhancedDealFormProps {
   initialData?: Partial<EnhancedDeal>
   resellers: Reseller[]
-  _products: Product[]
+  products: Product[]
   onSubmit: (data: EnhancedDeal) => void
   onCancel: () => void
   isLoading?: boolean
@@ -71,13 +67,13 @@ const DEAL_COMPLEXITIES = [
 export function EnhancedDealForm({
   initialData,
   resellers,
-  _products,
+  products,
   onSubmit,
   onCancel,
   isLoading = false,
   mode = 'create'
 }: EnhancedDealFormProps) {
-  const [_selectedReseller, setSelectedReseller] = useState<Reseller | null>(null)
+  const [selectedReseller, setSelectedReseller] = useState<Reseller | null>(null)
   const [expectedCloseDate, setExpectedCloseDate] = useState<Date>()
 
   const {
