@@ -1,205 +1,163 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { MainLayout } from '@/components/layout/main-layout'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ProductCatalog } from '@/components/products/product-catalog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { formatCurrency } from '@/lib/utils'
-import { Search, Plus, Edit, Trash2, Package } from 'lucide-react'
-
-interface Product {
-  id: string
-  name: string
-  category: string
-  list_price: number
-  created_at: string
-  updated_at: string
-}
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Plus, Settings, BarChart3, Package, DollarSign, Users, TrendingUp } from 'lucide-react'
+import Link from 'next/link'
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [selectedView, setSelectedView] = useState<'catalog' | 'management'>('catalog')
 
-  useEffect(() => {
-    fetchProducts()
-  }, [])
-
-  const fetchProducts = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch('/api/products')
-      const data = await response.json()
-      
-      if (data.success) {
-        setProducts(data.data.items)
-      } else {
-        setError('Failed to fetch products')
-      }
-    } catch (err) {
-      setError('Error loading products')
-      console.error('Error fetching products:', err)
-    } finally {
-      setLoading(false)
+  // Mock stats - in real app, these would come from API
+  const stats = [
+    {
+      title: 'Total Products',
+      value: '156',
+      change: '+12%',
+      icon: Package,
+      color: 'text-blue-600'
+    },
+    {
+      title: 'Active Categories',
+      value: '24',
+      change: '+2',
+      icon: BarChart3,
+      color: 'text-green-600'
+    },
+    {
+      title: 'Avg. Deal Size',
+      value: '£45,200',
+      change: '+8.2%',
+      icon: DollarSign,
+      color: 'text-purple-600'
+    },
+    {
+      title: 'Active Resellers',
+      value: '89',
+      change: '+5',
+      icon: Users,
+      color: 'text-orange-600'
     }
-  }
-
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.category.toLowerCase().includes(searchTerm.toLowerCase())
-  )
-
-  const getCategoryColor = (category: string) => {
-    switch (category.toLowerCase()) {
-      case 'software': return 'bg-blue-100 text-blue-800'
-      case 'hardware': return 'bg-green-100 text-green-800'
-      case 'services': return 'bg-purple-100 text-purple-800'
-      case 'support': return 'bg-orange-100 text-orange-800'
-      case 'training': return 'bg-indigo-100 text-indigo-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-
-
-  if (loading) {
-    return (
-      <MainLayout title="Products" subtitle="Manage your product catalog">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-gray-500">Loading products...</div>
-        </div>
-      </MainLayout>
-    )
-  }
-
-  if (error) {
-    return (
-      <MainLayout title="Products" subtitle="Manage your product catalog">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-red-500">{error}</div>
-        </div>
-      </MainLayout>
-    )
-  }
-
-  const categories = [...new Set(products.map(p => p.category))]
-  const totalValue = products.reduce((sum, product) => sum + product.list_price, 0)
+  ]
 
   return (
-    <MainLayout title="Products" subtitle="Manage your product catalog">
+    <MainLayout title="Products" subtitle="Advanced product catalog with dynamic pricing">
       <div className="space-y-6">
         {/* Header Actions */}
         <div className="flex items-center justify-between">
-          <div className="relative w-96">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <Input
-              placeholder="Search products..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Button
+                variant={selectedView === 'catalog' ? 'default' : 'outline'}
+                onClick={() => setSelectedView('catalog')}
+              >
+                <Package className="w-4 h-4 mr-2" />
+                Catalog
+              </Button>
+              <Button
+                variant={selectedView === 'management' ? 'default' : 'outline'}
+                onClick={() => setSelectedView('management')}
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                Management
+              </Button>
+            </div>
           </div>
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Product
-          </Button>
+
+          <div className="flex items-center gap-2">
+            <Link href="/products/categories">
+              <Button variant="outline">
+                <BarChart3 className="w-4 h-4 mr-2" />
+                Categories
+              </Button>
+            </Link>
+            <Link href="/products/pricing">
+              <Button variant="outline">
+                <DollarSign className="w-4 h-4 mr-2" />
+                Pricing
+              </Button>
+            </Link>
+            <Link href="/products/new">
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Product
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Products</CardTitle>
-              <Package className="h-4 w-4 text-gray-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{products.length}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Categories</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{categories.length}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Catalog Value</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totalValue)}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg. Price</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {formatCurrency(products.length > 0 ? totalValue / products.length : 0)}
-              </div>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {stats.map((stat, index) => (
+            <Card key={index}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+                <stat.icon className={`h-4 w-4 ${stat.color}`} />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stat.value}</div>
+                <div className="flex items-center text-xs text-muted-foreground">
+                  <TrendingUp className="w-3 h-3 mr-1 text-green-500" />
+                  {stat.change} from last month
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
-        {/* Products Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>All Products</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-4 font-medium">Name</th>
-                    <th className="text-left py-3 px-4 font-medium">Category</th>
-                    <th className="text-left py-3 px-4 font-medium">List Price</th>
-                    <th className="text-left py-3 px-4 font-medium">Created</th>
-                    <th className="text-left py-3 px-4 font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredProducts.map((product) => (
-                    <tr key={product.id} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-4 font-medium">{product.name}</td>
-                      <td className="py-3 px-4">
-                        <Badge className={getCategoryColor(product.category)}>
-                          {product.category}
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-4 font-medium">{formatCurrency(product.list_price)}</td>
-                      <td className="py-3 px-4 text-gray-600">
-                        {new Date(product.created_at).toLocaleDateString()}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center space-x-2">
-                          <Button variant="ghost" size="sm">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            
-            {filteredProducts.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                {searchTerm ? 'No products found matching your search.' : 'No products found.'}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Main Content */}
+        {selectedView === 'catalog' ? (
+          <ProductCatalog
+            // These would typically come from user context
+            resellerTier="gold"
+            territory="UK"
+            className="mt-6"
+          />
+        ) : (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Product Management</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Link href="/products/categories">
+                    <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                      <CardContent className="p-6 text-center">
+                        <BarChart3 className="w-8 h-8 mx-auto mb-2 text-blue-600" />
+                        <h3 className="font-semibold">Categories</h3>
+                        <p className="text-sm text-gray-500">Manage product categories</p>
+                      </CardContent>
+                    </Card>
+                  </Link>
+
+                  <Link href="/products/pricing">
+                    <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                      <CardContent className="p-6 text-center">
+                        <DollarSign className="w-8 h-8 mx-auto mb-2 text-green-600" />
+                        <h3 className="font-semibold">Pricing Tiers</h3>
+                        <p className="text-sm text-gray-500">Configure pricing rules</p>
+                      </CardContent>
+                    </Card>
+                  </Link>
+
+                  <Link href="/products/availability">
+                    <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                      <CardContent className="p-6 text-center">
+                        <Users className="w-8 h-8 mx-auto mb-2 text-purple-600" />
+                        <h3 className="font-semibold">Availability</h3>
+                        <p className="text-sm text-gray-500">Territory & reseller access</p>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </MainLayout>
   )

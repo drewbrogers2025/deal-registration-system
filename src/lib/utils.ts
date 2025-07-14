@@ -210,22 +210,99 @@ export function calculateConflictPriority(
   daysSinceSubmission: number
 ): 'high' | 'medium' | 'low' {
   let score = 0
-  
+
   // Deal value weight
   if (dealValue > 100000) score += 3
   else if (dealValue > 50000) score += 2
   else score += 1
-  
+
   // Conflict type weight
   if (conflictType === 'duplicate_end_user') score += 3
   else if (conflictType === 'territory_overlap') score += 2
   else score += 1
-  
+
   // Time weight
   if (daysSinceSubmission > 7) score += 2
   else if (daysSinceSubmission > 3) score += 1
-  
+
   if (score >= 7) return 'high'
   if (score >= 4) return 'medium'
   return 'low'
+}
+
+// Pricing utilities
+export function calculateDiscountAmount(
+  basePrice: number,
+  discountType: 'percentage' | 'fixed_amount',
+  discountValue: number,
+  quantity: number = 1
+): number {
+  if (discountType === 'percentage') {
+    return (basePrice * quantity * discountValue) / 100
+  } else {
+    return discountValue * quantity
+  }
+}
+
+export function formatPriceRange(minPrice: number, maxPrice: number, currency = 'GBP'): string {
+  if (minPrice === maxPrice) {
+    return formatCurrency(minPrice)
+  }
+  return `${formatCurrency(minPrice)} - ${formatCurrency(maxPrice)}`
+}
+
+export function calculateMargin(costPrice: number, sellPrice: number): number {
+  if (costPrice === 0) return 0
+  return ((sellPrice - costPrice) / sellPrice) * 100
+}
+
+export function formatMargin(margin: number): string {
+  return `${margin.toFixed(1)}%`
+}
+
+// Product utilities
+export function generateSKU(productName: string, category: string): string {
+  const nameCode = productName
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase())
+    .join('')
+    .substring(0, 3)
+
+  const categoryCode = category
+    .substring(0, 3)
+    .toUpperCase()
+
+  const timestamp = Date.now().toString().slice(-4)
+
+  return `${categoryCode}-${nameCode}-${timestamp}`
+}
+
+export function getProductStatusColor(status: string): string {
+  switch (status.toLowerCase()) {
+    case 'active':
+      return 'bg-green-100 text-green-800'
+    case 'discontinued':
+      return 'bg-red-100 text-red-800'
+    case 'coming_soon':
+      return 'bg-blue-100 text-blue-800'
+    default:
+      return 'bg-gray-100 text-gray-800'
+  }
+}
+
+export function getCategoryColor(category: string): string {
+  switch (category.toLowerCase()) {
+    case 'software':
+      return 'bg-blue-100 text-blue-800'
+    case 'hardware':
+      return 'bg-green-100 text-green-800'
+    case 'services':
+      return 'bg-purple-100 text-purple-800'
+    case 'support':
+      return 'bg-orange-100 text-orange-800'
+    case 'training':
+      return 'bg-indigo-100 text-indigo-800'
+    default:
+      return 'bg-gray-100 text-gray-800'
+  }
 }

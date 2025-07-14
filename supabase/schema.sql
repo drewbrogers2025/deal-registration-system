@@ -12,6 +12,9 @@ CREATE TYPE deal_status AS ENUM ('pending', 'assigned', 'disputed', 'approved', 
 CREATE TYPE conflict_type AS ENUM ('duplicate_end_user', 'territory_overlap', 'timing_conflict');
 CREATE TYPE resolution_status AS ENUM ('pending', 'resolved', 'dismissed');
 CREATE TYPE staff_role AS ENUM ('admin', 'manager', 'staff');
+CREATE TYPE product_status AS ENUM ('active', 'discontinued', 'coming_soon');
+CREATE TYPE pricing_tier_type AS ENUM ('standard', 'volume', 'deal_registration', 'reseller_tier', 'territory', 'promotional');
+CREATE TYPE discount_type AS ENUM ('percentage', 'fixed_amount');
 
 -- Staff Users table (for authentication and role management)
 CREATE TABLE staff_users (
@@ -46,14 +49,129 @@ CREATE TABLE end_users (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Products table
+-- Product Categories table (hierarchical)
+CREATE TABLE product_categories (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    description TEXT,
+    parent_id UUID REFERENCES product_categories(id) ON DELETE CASCADE,
+    sort_order INTEGER DEFAULT 0,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Products table (enhanced)
 CREATE TABLE products (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name TEXT NOT NULL,
-    category TEXT NOT NULL,
+    sku TEXT UNIQUE,
+    description TEXT,
+    category_id UUID REFERENCES product_categories(id) ON DELETE SET NULL,
+    category TEXT NOT NULL, -- Keep for backward compatibility
     list_price DECIMAL(12,2) NOT NULL CHECK (list_price > 0),
+    cost_price DECIMAL(12,2),
+    status product_status DEFAULT 'active',
+    image_url TEXT,
+    documentation_url TEXT,
+    specifications JSONB DEFAULT '{}',
+    tags TEXT[] DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Product Pricing Tiers table
+CREATE TABLE product_pricing_tiers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    tier_type pricing_tier_type NOT NULL,
+    tier_name TEXT NOT NULL,
+    price DECIMAL(12,2) NOT NULL CHECK (price >= 0),
+    min_quantity INTEGER DEFAULT 1,
+    max_quantity INTEGER,
+    reseller_tier reseller_tier,
+    territory TEXT,
+    start_date TIMESTAMP WITH TIME ZONE,
+    end_date TIMESTAMP WITH TIME ZONE,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(product_id, tier_type, tier_name)
+);
+
+-- Volume Discounts table
+CREATE TABLE volume_discounts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    min_quantity INTEGER NOT NULL CHECK (min_quantity > 0),
+    max_quantity INTEGER CHECK (max_quantity IS NULL OR max_quantity >= min_quantity),
+    discount_type discount_type NOT NULL,
+    discount_value DECIMAL(12,4) NOT NULL CHECK (discount_value >= 0),
+    reseller_tier reseller_tier,
+    territory TEXT,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Deal Registration Pricing table
+CREATE TABLE deal_registration_pricing (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    deal_registration_price DECIMAL(12,2) NOT NULL CHECK (deal_registration_price >= 0),
+    min_deal_value DECIMAL(12,2),
+    max_deal_value DECIMAL(12,2),
+    reseller_tier reseller_tier,
+    territory TEXT,
+    requires_approval BOOLEAN DEFAULT false,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Product Availability table
+CREATE TABLE product_availability (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    reseller_id UUID REFERENCES resellers(id) ON DELETE CASCADE,
+    territory TEXT,
+    reseller_tier reseller_tier,
+    is_available BOOLEAN DEFAULT true,
+    restriction_reason TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Territory Pricing table
+CREATE TABLE territory_pricing (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    territory TEXT NOT NULL,
+    price_multiplier DECIMAL(8,4) DEFAULT 1.0000 CHECK (price_multiplier > 0),
+    currency_code TEXT DEFAULT 'GBP',
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(product_id, territory)
+);
+
+-- Promotional Pricing table
+CREATE TABLE promotional_pricing (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    promotion_name TEXT NOT NULL,
+    discount_type discount_type NOT NULL,
+    discount_value DECIMAL(12,4) NOT NULL CHECK (discount_value >= 0),
+    start_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    end_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    reseller_tier reseller_tier,
+    territory TEXT,
+    min_quantity INTEGER DEFAULT 1,
+    max_usage_per_reseller INTEGER,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CHECK (end_date > start_date)
 );
 
 -- Deals table
@@ -126,6 +244,54 @@ CREATE INDEX idx_end_users_company_name ON end_users(company_name);
 CREATE INDEX idx_end_users_territory ON end_users(territory);
 CREATE INDEX idx_end_users_contact_email ON end_users(contact_email);
 
+-- Product category indexes
+CREATE INDEX idx_product_categories_parent_id ON product_categories(parent_id);
+CREATE INDEX idx_product_categories_name ON product_categories(name);
+CREATE INDEX idx_product_categories_is_active ON product_categories(is_active);
+
+-- Product indexes
+CREATE INDEX idx_products_category_id ON products(category_id);
+CREATE INDEX idx_products_status ON products(status);
+CREATE INDEX idx_products_name ON products(name);
+CREATE INDEX idx_products_sku ON products(sku);
+
+-- Product pricing tier indexes
+CREATE INDEX idx_product_pricing_tiers_product_id ON product_pricing_tiers(product_id);
+CREATE INDEX idx_product_pricing_tiers_tier_type ON product_pricing_tiers(tier_type);
+CREATE INDEX idx_product_pricing_tiers_reseller_tier ON product_pricing_tiers(reseller_tier);
+CREATE INDEX idx_product_pricing_tiers_territory ON product_pricing_tiers(territory);
+CREATE INDEX idx_product_pricing_tiers_active ON product_pricing_tiers(is_active);
+
+-- Volume discount indexes
+CREATE INDEX idx_volume_discounts_product_id ON volume_discounts(product_id);
+CREATE INDEX idx_volume_discounts_quantity ON volume_discounts(min_quantity, max_quantity);
+CREATE INDEX idx_volume_discounts_reseller_tier ON volume_discounts(reseller_tier);
+CREATE INDEX idx_volume_discounts_active ON volume_discounts(is_active);
+
+-- Deal registration pricing indexes
+CREATE INDEX idx_deal_registration_pricing_product_id ON deal_registration_pricing(product_id);
+CREATE INDEX idx_deal_registration_pricing_reseller_tier ON deal_registration_pricing(reseller_tier);
+CREATE INDEX idx_deal_registration_pricing_territory ON deal_registration_pricing(territory);
+CREATE INDEX idx_deal_registration_pricing_active ON deal_registration_pricing(is_active);
+
+-- Product availability indexes
+CREATE INDEX idx_product_availability_product_id ON product_availability(product_id);
+CREATE INDEX idx_product_availability_reseller_id ON product_availability(reseller_id);
+CREATE INDEX idx_product_availability_territory ON product_availability(territory);
+CREATE INDEX idx_product_availability_reseller_tier ON product_availability(reseller_tier);
+
+-- Territory pricing indexes
+CREATE INDEX idx_territory_pricing_product_id ON territory_pricing(product_id);
+CREATE INDEX idx_territory_pricing_territory ON territory_pricing(territory);
+CREATE INDEX idx_territory_pricing_active ON territory_pricing(is_active);
+
+-- Promotional pricing indexes
+CREATE INDEX idx_promotional_pricing_product_id ON promotional_pricing(product_id);
+CREATE INDEX idx_promotional_pricing_dates ON promotional_pricing(start_date, end_date);
+CREATE INDEX idx_promotional_pricing_reseller_tier ON promotional_pricing(reseller_tier);
+CREATE INDEX idx_promotional_pricing_territory ON promotional_pricing(territory);
+CREATE INDEX idx_promotional_pricing_active ON promotional_pricing(is_active);
+
 CREATE INDEX idx_deals_reseller_id ON deals(reseller_id);
 CREATE INDEX idx_deals_end_user_id ON deals(end_user_id);
 CREATE INDEX idx_deals_assigned_reseller_id ON deals(assigned_reseller_id);
@@ -159,7 +325,14 @@ $$ language 'plpgsql';
 CREATE TRIGGER update_staff_users_updated_at BEFORE UPDATE ON staff_users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_resellers_updated_at BEFORE UPDATE ON resellers FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_end_users_updated_at BEFORE UPDATE ON end_users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_product_categories_updated_at BEFORE UPDATE ON product_categories FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_product_pricing_tiers_updated_at BEFORE UPDATE ON product_pricing_tiers FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_volume_discounts_updated_at BEFORE UPDATE ON volume_discounts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_deal_registration_pricing_updated_at BEFORE UPDATE ON deal_registration_pricing FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_product_availability_updated_at BEFORE UPDATE ON product_availability FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_territory_pricing_updated_at BEFORE UPDATE ON territory_pricing FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_promotional_pricing_updated_at BEFORE UPDATE ON promotional_pricing FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_deals_updated_at BEFORE UPDATE ON deals FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_deal_conflicts_updated_at BEFORE UPDATE ON deal_conflicts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_eligibility_rules_updated_at BEFORE UPDATE ON eligibility_rules FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -243,7 +416,14 @@ $$ LANGUAGE plpgsql;
 ALTER TABLE staff_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE resellers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE end_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE product_categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE product_pricing_tiers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE volume_discounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE deal_registration_pricing ENABLE ROW LEVEL SECURITY;
+ALTER TABLE product_availability ENABLE ROW LEVEL SECURITY;
+ALTER TABLE territory_pricing ENABLE ROW LEVEL SECURITY;
+ALTER TABLE promotional_pricing ENABLE ROW LEVEL SECURITY;
 ALTER TABLE deals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE deal_products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE deal_conflicts ENABLE ROW LEVEL SECURITY;
@@ -281,6 +461,90 @@ CREATE POLICY "Staff can view all products" ON products
     FOR SELECT USING (auth.role() = 'authenticated');
 
 CREATE POLICY "Managers and admins can manage products" ON products
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM staff_users
+            WHERE id = auth.uid() AND role IN ('admin', 'manager')
+        )
+    );
+
+-- Product categories policies
+CREATE POLICY "Staff can view all product categories" ON product_categories
+    FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Managers and admins can manage product categories" ON product_categories
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM staff_users
+            WHERE id = auth.uid() AND role IN ('admin', 'manager')
+        )
+    );
+
+-- Product pricing tiers policies
+CREATE POLICY "Staff can view all pricing tiers" ON product_pricing_tiers
+    FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Managers and admins can manage pricing tiers" ON product_pricing_tiers
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM staff_users
+            WHERE id = auth.uid() AND role IN ('admin', 'manager')
+        )
+    );
+
+-- Volume discounts policies
+CREATE POLICY "Staff can view all volume discounts" ON volume_discounts
+    FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Managers and admins can manage volume discounts" ON volume_discounts
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM staff_users
+            WHERE id = auth.uid() AND role IN ('admin', 'manager')
+        )
+    );
+
+-- Deal registration pricing policies
+CREATE POLICY "Staff can view all deal registration pricing" ON deal_registration_pricing
+    FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Managers and admins can manage deal registration pricing" ON deal_registration_pricing
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM staff_users
+            WHERE id = auth.uid() AND role IN ('admin', 'manager')
+        )
+    );
+
+-- Product availability policies
+CREATE POLICY "Staff can view all product availability" ON product_availability
+    FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Managers and admins can manage product availability" ON product_availability
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM staff_users
+            WHERE id = auth.uid() AND role IN ('admin', 'manager')
+        )
+    );
+
+-- Territory pricing policies
+CREATE POLICY "Staff can view all territory pricing" ON territory_pricing
+    FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Managers and admins can manage territory pricing" ON territory_pricing
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM staff_users
+            WHERE id = auth.uid() AND role IN ('admin', 'manager')
+        )
+    );
+
+-- Promotional pricing policies
+CREATE POLICY "Staff can view all promotional pricing" ON promotional_pricing
+    FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Managers and admins can manage promotional pricing" ON promotional_pricing
     FOR ALL USING (
         EXISTS (
             SELECT 1 FROM staff_users
@@ -354,6 +618,78 @@ INSERT INTO end_users (company_name, contact_name, contact_email, territory) VAL
     ('StartupTech', 'Mike Chen', 'mike@startuptech.com', 'Southeast US'),
     ('Enterprise Corp', 'Lisa Brown', 'lisa.brown@enterprise.com', 'Midwest US'),
     ('Innovation Labs', 'David Wilson', 'david@innovationlabs.com', 'International');
+
+-- Sample product categories
+INSERT INTO product_categories (name, description, sort_order) VALUES
+    ('Software', 'Software products and licenses', 1),
+    ('Hardware', 'Physical hardware products', 2),
+    ('Services', 'Professional and consulting services', 3),
+    ('Support', 'Support and maintenance packages', 4),
+    ('Training', 'Training and certification programs', 5);
+
+-- Insert subcategories
+INSERT INTO product_categories (name, description, parent_id, sort_order) VALUES
+    ('Enterprise Software', 'Large-scale enterprise software solutions',
+     (SELECT id FROM product_categories WHERE name = 'Software'), 1),
+    ('Cloud Software', 'Cloud-based software solutions',
+     (SELECT id FROM product_categories WHERE name = 'Software'), 2),
+    ('Servers', 'Server hardware and equipment',
+     (SELECT id FROM product_categories WHERE name = 'Hardware'), 1),
+    ('Networking', 'Network equipment and infrastructure',
+     (SELECT id FROM product_categories WHERE name = 'Hardware'), 2);
+
+-- Update products with enhanced information
+UPDATE products SET
+    sku = 'ESL-001',
+    description = 'Comprehensive enterprise software license with full feature access',
+    category_id = (SELECT id FROM product_categories WHERE name = 'Enterprise Software'),
+    cost_price = 30000.00,
+    specifications = '{"users": "unlimited", "deployment": "on-premise", "support": "24/7"}'
+WHERE name = 'Enterprise Software License';
+
+UPDATE products SET
+    sku = 'PS-001',
+    description = 'Professional consulting and implementation services',
+    category_id = (SELECT id FROM product_categories WHERE name = 'Services'),
+    cost_price = 15000.00,
+    specifications = '{"duration": "3 months", "team_size": "5 consultants", "deliverables": "implementation"}'
+WHERE name = 'Professional Services';
+
+UPDATE products SET
+    sku = 'SUP-001',
+    description = 'Premium support package with priority response',
+    category_id = (SELECT id FROM product_categories WHERE name = 'Support'),
+    cost_price = 6000.00,
+    specifications = '{"response_time": "4 hours", "coverage": "24/7", "channels": ["phone", "email", "chat"]}'
+WHERE name = 'Support Package';
+
+-- Sample volume discounts
+INSERT INTO volume_discounts (product_id, min_quantity, max_quantity, discount_type, discount_value, reseller_tier) VALUES
+    ((SELECT id FROM products WHERE sku = 'ESL-001'), 5, 9, 'percentage', 5.0000, NULL),
+    ((SELECT id FROM products WHERE sku = 'ESL-001'), 10, 24, 'percentage', 10.0000, NULL),
+    ((SELECT id FROM products WHERE sku = 'ESL-001'), 25, NULL, 'percentage', 15.0000, NULL),
+    ((SELECT id FROM products WHERE sku = 'PS-001'), 3, 5, 'percentage', 8.0000, 'gold'),
+    ((SELECT id FROM products WHERE sku = 'SUP-001'), 10, NULL, 'fixed_amount', 1000.0000, NULL);
+
+-- Sample deal registration pricing
+INSERT INTO deal_registration_pricing (product_id, deal_registration_price, min_deal_value, reseller_tier) VALUES
+    ((SELECT id FROM products WHERE sku = 'ESL-001'), 40000.00, 100000.00, 'gold'),
+    ((SELECT id FROM products WHERE sku = 'ESL-001'), 42000.00, 50000.00, 'silver'),
+    ((SELECT id FROM products WHERE sku = 'PS-001'), 20000.00, 50000.00, 'gold'),
+    ((SELECT id FROM products WHERE sku = 'SUP-001'), 8000.00, 25000.00, NULL);
+
+-- Sample territory pricing
+INSERT INTO territory_pricing (product_id, territory, price_multiplier, currency_code) VALUES
+    ((SELECT id FROM products WHERE sku = 'ESL-001'), 'International', 1.2000, 'USD'),
+    ((SELECT id FROM products WHERE sku = 'ESL-001'), 'West Coast', 1.1000, 'GBP'),
+    ((SELECT id FROM products WHERE sku = 'PS-001'), 'International', 1.3000, 'USD');
+
+-- Sample promotional pricing
+INSERT INTO promotional_pricing (product_id, promotion_name, discount_type, discount_value, start_date, end_date, reseller_tier) VALUES
+    ((SELECT id FROM products WHERE sku = 'ESL-001'), 'Q4 Enterprise Push', 'percentage', 12.0000,
+     '2024-10-01'::timestamp, '2024-12-31'::timestamp, 'gold'),
+    ((SELECT id FROM products WHERE sku = 'SUP-001'), 'Support Bundle Promo', 'fixed_amount', 2000.0000,
+     '2024-11-01'::timestamp, '2024-11-30'::timestamp, NULL);
 
 -- Sample eligibility rules
 INSERT INTO eligibility_rules (name, description, rule_type, conditions) VALUES
