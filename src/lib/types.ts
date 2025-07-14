@@ -437,3 +437,72 @@ export const RegistrationFormDataSchema = z.object({
 export type RegistrationFormData = z.infer<typeof RegistrationFormDataSchema>
 export type ResellerRegistrationData = z.infer<typeof ResellerRegistrationSchema>
 export type StaffRegistrationData = z.infer<typeof StaffRegistrationSchema>
+
+// Enhanced deal schema for advanced deal management
+export const EnhancedDealSchema = z.object({
+  reseller_id: z.string().uuid('Valid reseller ID is required'),
+  end_user_id: z.string().uuid('Valid end user ID is required'),
+  product_id: z.string().uuid('Valid product ID is required'),
+  deal_value: z.number().positive('Deal value must be positive'),
+  currency: z.string().default('GBP'),
+  quantity: z.number().int().positive('Quantity must be positive'),
+  estimated_close_date: z.string().optional(),
+  probability: z.number().min(0).max(100).default(50),
+  notes: z.string().optional(),
+  competitive_situation: z.string().optional(),
+  decision_criteria: z.string().optional(),
+  next_steps: z.string().optional(),
+})
+
+// Product category schema
+export const ProductCategorySchema = z.object({
+  name: z.string().min(1, 'Category name is required'),
+  description: z.string().optional(),
+  parent_category_id: z.string().uuid().optional(),
+  sort_order: z.number().int().default(0),
+  is_active: z.boolean().default(true),
+})
+
+// Product pricing tier schema
+export const ProductPricingTierSchema = z.object({
+  product_id: z.string().uuid('Valid product ID is required'),
+  tier_type: z.enum(['standard', 'volume', 'deal_registration', 'reseller_tier', 'territory', 'promotional']),
+  tier_name: z.string().min(1, 'Tier name is required'),
+  price: z.number().positive('Price must be positive'),
+  currency: z.string().default('GBP'),
+  min_quantity: z.number().int().positive().default(1),
+  max_quantity: z.number().int().positive().optional(),
+  reseller_tier: ResellerTier.optional(),
+  territory: z.string().optional(),
+  effective_from: z.string().optional(),
+  effective_to: z.string().optional(),
+  is_active: z.boolean().default(true),
+})
+
+// Pricing context schema for dynamic pricing
+export const PricingContextSchema = z.object({
+  product_id: z.string().uuid('Valid product ID is required'),
+  reseller_id: z.string().uuid().optional(),
+  territory: z.string().optional(),
+  quantity: z.number().int().positive().default(1),
+  deal_value: z.number().positive().optional(),
+  reseller_tier: ResellerTier.optional(),
+})
+
+// Product catalog filter schema
+export const ProductCatalogFilterSchema = z.object({
+  category_id: z.string().uuid().optional(),
+  status: z.enum(['active', 'discontinued', 'coming_soon']).optional(),
+  search: z.string().optional(),
+  min_price: z.number().positive().optional(),
+  max_price: z.number().positive().optional(),
+  tags: z.array(z.string()).optional(),
+  page: z.number().int().positive().default(1),
+  limit: z.number().int().positive().max(100).default(20),
+})
+
+export type EnhancedDeal = z.infer<typeof EnhancedDealSchema>
+export type ProductCategory = z.infer<typeof ProductCategorySchema>
+export type ProductPricingTier = z.infer<typeof ProductPricingTierSchema>
+export type PricingContext = z.infer<typeof PricingContextSchema>
+export type ProductCatalogFilter = z.infer<typeof ProductCatalogFilterSchema>

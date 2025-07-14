@@ -1,0 +1,380 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { MainLayout } from '@/components/layout/main-layout'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { 
+  Plus, 
+  Search, 
+  Filter, 
+  Calendar,
+  DollarSign,
+  TrendingUp,
+  Users,
+  Target,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  BarChart3
+} from 'lucide-react'
+import { EnhancedDealForm } from '@/components/deals/enhanced-deal-form'
+import type { EnhancedDealWithRelations, Reseller, Product } from '@/lib/types'
+
+export default function EnhancedDealsPage() {
+  const [deals, setDeals] = useState<EnhancedDealWithRelations[]>([])
+  const [resellers, setResellers] = useState<Reseller[]>([])
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [selectedDeal, setSelectedDeal] = useState<EnhancedDealWithRelations | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [stageFilter, setStageFilter] = useState<string>('all')
+  const [priorityFilter, setPriorityFilter] = useState<string>('all')
+
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  const fetchData = async () => {
+    try {
+      // Fetch deals with enhanced data
+      const dealsResponse = await fetch('/api/deals/enhanced?include_relations=true')
+      if (dealsResponse.ok) {
+        const dealsData = await dealsResponse.json()
+        setDeals(dealsData.data || [])
+      }
+
+      // Fetch resellers
+      const resellersResponse = await fetch('/api/resellers?status=approved')
+      if (resellersResponse.ok) {
+        const resellersData = await resellersResponse.json()
+        setResellers(resellersData.data?.items || [])
+      }
+
+      // Fetch products
+      const productsResponse = await fetch('/api/products')
+      if (productsResponse.ok) {
+        const productsData = await productsResponse.json()
+        setProducts(productsData.data?.items || [])
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCreateDeal = async (dealData: any) => {
+    try {
+      const response = await fetch('/api/deals/enhanced', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dealData),
+      })
+
+      if (response.ok) {
+        await fetchData()
+        setShowCreateForm(false)
+      }
+    } catch (error) {
+      console.error('Error creating deal:', error)
+    }
+  }
+
+  const getStageColor = (stage: string) => {
+    const colors = {
+      lead: 'bg-gray-100 text-gray-800',
+      qualified: 'bg-blue-100 text-blue-800',
+      proposal: 'bg-yellow-100 text-yellow-800',
+      negotiation: 'bg-orange-100 text-orange-800',
+      closed_won: 'bg-green-100 text-green-800',
+      closed_lost: 'bg-red-100 text-red-800',
+    }
+    return colors[stage as keyof typeof colors] || 'bg-gray-100 text-gray-800'
+  }
+
+  const getPriorityColor = (priority: string) => {
+    const colors = {
+      low: 'bg-gray-100 text-gray-800',
+      medium: 'bg-blue-100 text-blue-800',
+      high: 'bg-orange-100 text-orange-800',
+      urgent: 'bg-red-100 text-red-800',
+    }
+    return colors[priority as keyof typeof colors] || 'bg-gray-100 text-gray-800'
+  }
+
+  const getStageIcon = (stage: string) => {
+    switch (stage) {
+      case 'lead': return <Users className="w-4 h-4" />
+      case 'qualified': return <Target className="w-4 h-4" />
+      case 'proposal': return <FileText className="w-4 h-4" />
+      case 'negotiation': return <TrendingUp className="w-4 h-4" />
+      case 'closed_won': return <CheckCircle className="w-4 h-4" />
+      case 'closed_lost': return <AlertCircle className="w-4 h-4" />
+      default: return <Clock className="w-4 h-4" />
+    }
+  }
+
+  const filteredDeals = deals.filter(deal => {
+    const matchesSearch = deal.deal_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         deal.reseller?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesStage = stageFilter === 'all' || deal.opportunity_stage === stageFilter
+    const matchesPriority = priorityFilter === 'all' || deal.deal_priority === priorityFilter
+    
+    return matchesSearch && matchesStage && matchesPriority
+  })
+
+  // Calculate summary metrics
+  const metrics = {
+    totalDeals: deals.length,
+    totalValue: deals.reduce((sum, deal) => sum + (deal.total_value || 0), 0),
+    avgProbability: deals.length > 0 
+      ? deals.reduce((sum, deal) => sum + (deal.probability || 0), 0) / deals.length 
+      : 0,
+    stageDistribution: deals.reduce((acc, deal) => {
+      acc[deal.opportunity_stage || 'unknown'] = (acc[deal.opportunity_stage || 'unknown'] || 0) + 1
+      return acc
+    }, {} as Record<string, number>)
+  }
+
+  if (loading) {
+    return (
+      <MainLayout title="Enhanced Deal Management" subtitle="Loading...">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading deals...</p>
+          </div>
+        </div>
+      </MainLayout>
+    )
+  }
+
+  if (showCreateForm) {
+    return (
+      <MainLayout title="Create New Deal" subtitle="Enhanced deal registration">
+        <EnhancedDealForm
+          resellers={resellers}
+          products={products}
+          onSubmit={handleCreateDeal}
+          onCancel={() => setShowCreateForm(false)}
+          mode="create"
+        />
+      </MainLayout>
+    )
+  }
+
+  return (
+    <MainLayout title="Enhanced Deal Management" subtitle="Comprehensive deal tracking and management">
+      <div className="space-y-6">
+        {/* Summary Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <BarChart3 className="w-6 h-6 text-blue-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Total Deals</p>
+                  <p className="text-2xl font-bold text-gray-900">{metrics.totalDeals}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <DollarSign className="w-6 h-6 text-green-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Total Value</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    ${metrics.totalValue.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center">
+                <div className="p-2 bg-orange-100 rounded-lg">
+                  <Target className="w-6 h-6 text-orange-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Avg Probability</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {Math.round(metrics.avgProbability)}%
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <TrendingUp className="w-6 h-6 text-purple-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">In Negotiation</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {metrics.stageDistribution.negotiation || 0}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Filters and Actions */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+              <div className="flex flex-1 gap-4">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <Input
+                    placeholder="Search deals..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                
+                <Select value={stageFilter} onValueChange={setStageFilter}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="All Stages" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Stages</SelectItem>
+                    <SelectItem value="lead">Lead</SelectItem>
+                    <SelectItem value="qualified">Qualified</SelectItem>
+                    <SelectItem value="proposal">Proposal</SelectItem>
+                    <SelectItem value="negotiation">Negotiation</SelectItem>
+                    <SelectItem value="closed_won">Closed Won</SelectItem>
+                    <SelectItem value="closed_lost">Closed Lost</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="All Priorities" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Priorities</SelectItem>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="urgent">Urgent</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button onClick={() => setShowCreateForm(true)} className="flex items-center">
+                <Plus className="w-4 h-4 mr-2" />
+                New Deal
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Deals List */}
+        <div className="grid grid-cols-1 gap-6">
+          {filteredDeals.map((deal) => (
+            <Card key={deal.id} className="hover:shadow-lg transition-shadow">
+              <CardContent className="pt-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3 mb-2">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {deal.deal_name}
+                      </h3>
+                      <Badge className={getStageColor(deal.opportunity_stage || '')}>
+                        <div className="flex items-center space-x-1">
+                          {getStageIcon(deal.opportunity_stage || '')}
+                          <span className="capitalize">
+                            {deal.opportunity_stage?.replace('_', ' ')}
+                          </span>
+                        </div>
+                      </Badge>
+                      <Badge className={getPriorityColor(deal.deal_priority || '')}>
+                        {deal.deal_priority?.toUpperCase()}
+                      </Badge>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm text-gray-600">
+                      <div>
+                        <p className="font-medium">Reseller</p>
+                        <p>{deal.reseller?.name}</p>
+                      </div>
+                      <div>
+                        <p className="font-medium">Value</p>
+                        <p className="text-lg font-semibold text-gray-900">
+                          ${deal.total_value?.toLocaleString()}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="font-medium">Probability</p>
+                        <p>{deal.probability}%</p>
+                      </div>
+                      <div>
+                        <p className="font-medium">Expected Close</p>
+                        <p>
+                          {deal.expected_close_date 
+                            ? new Date(deal.expected_close_date).toLocaleDateString()
+                            : 'Not set'
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex space-x-2">
+                    <Button variant="outline" size="sm">
+                      View Details
+                    </Button>
+                    <Button variant="outline" size="sm">
+                      Edit
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {filteredDeals.length === 0 && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center py-8">
+                <BarChart3 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No deals found</h3>
+                <p className="text-gray-600 mb-4">
+                  {searchTerm || stageFilter !== 'all' || priorityFilter !== 'all'
+                    ? 'Try adjusting your search criteria or filters.'
+                    : 'Get started by creating your first enhanced deal registration.'
+                  }
+                </p>
+                <Button onClick={() => setShowCreateForm(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create First Deal
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </MainLayout>
+  )
+}
