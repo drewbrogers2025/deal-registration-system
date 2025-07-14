@@ -13,14 +13,28 @@ export async function GET(request: NextRequest) {
     const territory = searchParams.get('territory')
     const tier = searchParams.get('tier')
     const status = searchParams.get('status')
+    const registrationStatus = searchParams.get('registration_status')
     const search = searchParams.get('search')
-    
+    const includeRelations = searchParams.get('include_relations') === 'true'
+
     const offset = (page - 1) * limit
-    
+
+    // Build select clause
+    let selectClause = '*'
+    if (includeRelations) {
+      selectClause = `
+        *,
+        contacts:reseller_contacts(*),
+        territories:reseller_territories(*),
+        documents:company_documents(id, name, document_type, is_current, expires_at),
+        metrics:company_metrics(*)
+      `
+    }
+
     // Build query
     let query = supabase
       .from('resellers')
-      .select('*')
+      .select(selectClause, { count: 'exact' })
       .order('name', { ascending: true })
       .range(offset, offset + limit - 1)
     
@@ -28,20 +42,33 @@ export async function GET(request: NextRequest) {
     if (territory) {
       query = query.eq('territory', territory)
     }
-    
+
     if (tier) {
       query = query.eq('tier', tier)
     }
-    
+
     if (status) {
       query = query.eq('status', status)
     }
-    
-    if (search) {
-      query = query.ilike('name', `%${search}%`)
+
+    if (registrationStatus) {
+      query = query.eq('registration_status', registrationStatus)
     }
-    
-    const { data: resellers, error } = await query
+
+    if (search) {
+      if (includeRelations) {
+        // Enhanced search across multiple fields when relations are included
+        query = query.or(`
+          name.ilike.%${search}%,
+          legal_name.ilike.%${search}%,
+          email.ilike.%${search}%
+        `)
+      } else {
+        query = query.ilike('name', `%${search}%`)
+      }
+    }
+
+    const { data: resellers, error, count } = await query
     
     if (error) {
       console.error('Error fetching resellers:', error)
@@ -51,19 +78,25 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    // Get total count for pagination
-    const { count: totalCount } = await supabase
-      .from('resellers')
-      .select('*', { count: 'exact', head: true })
-    
+    // Return data with pagination info
+    const totalPages = Math.ceil((count || 0) / limit)
+
     return NextResponse.json({
-      data: {
+      data: includeRelations ? resellers : {
         items: resellers || [],
-        total: totalCount || 0,
+        total: count || 0,
         page,
         limit,
-        totalPages: Math.ceil((totalCount || 0) / limit)
+        totalPages
       },
+      pagination: includeRelations ? {
+        page,
+        limit,
+        total: count || 0,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      } : undefined,
       success: true,
       error: null
     })
