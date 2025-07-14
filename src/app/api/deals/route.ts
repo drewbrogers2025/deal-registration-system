@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerComponentClient } from '@/lib/supabase'
 import { CreateDealSchema } from '@/lib/types'
 import { ConflictDetectionEngine } from '@/lib/conflict-detection'
+import { ValidationEngine } from '@/lib/validation-engine'
+import { ApprovalEngine } from '@/lib/approval-engine'
+import { NotificationService } from '@/lib/notification-service'
 
 export async function GET(request: NextRequest) {
   try {
@@ -112,7 +115,24 @@ export async function POST(request: NextRequest) {
     }
     
     const dealData = validation.data
-    
+
+    // Enhanced validation
+    const validationEngine = new ValidationEngine()
+    const validationResult = await validationEngine.validateDeal(dealData)
+
+    // Check for validation errors
+    const validationErrors = validationResult.errors.filter(e => e.severity === 'error')
+    if (validationErrors.length > 0) {
+      return NextResponse.json(
+        {
+          error: 'Deal validation failed',
+          details: validationErrors,
+          warnings: validationResult.warnings
+        },
+        { status: 400 }
+      )
+    }
+
     // Start transaction
     const { data: insertedEndUser, error: endUserError } = await supabase
       .from('end_users')
@@ -140,14 +160,18 @@ export async function POST(request: NextRequest) {
       0
     )
     
-    // Create deal
+    // Create deal with enhanced fields
     const { data: insertedDeal, error: dealError } = await supabase
       .from('deals')
       .insert({
         reseller_id: dealData.reseller_id,
         end_user_id: insertedEndUser.id,
         total_value: totalValue,
-        status: 'pending'
+        status: 'pending',
+        substatus: 'submitted',
+        priority: dealData.priority || 1,
+        expected_close_date: dealData.expected_close_date,
+        deal_description: dealData.deal_description
       })
       .select()
       .single()
@@ -194,14 +218,36 @@ export async function POST(request: NextRequest) {
     // Create conflict records if any
     if (conflictResult.hasConflicts) {
       await conflictEngine.createConflictRecords(insertedDeal.id, conflictResult.conflicts)
-      
+
       // Update deal status to disputed if high-severity conflicts
       const hasHighSeverityConflicts = conflictResult.conflicts.some(c => c.severity === 'high')
       if (hasHighSeverityConflicts) {
         await supabase
           .from('deals')
-          .update({ status: 'disputed' })
+          .update({
+            status: 'disputed',
+            substatus: 'conflict_review'
+          })
           .eq('id', insertedDeal.id)
+      }
+    }
+
+    // Initialize approval workflow if no high-severity conflicts
+    let approvalResult = null
+    if (!conflictResult.hasConflicts || !conflictResult.conflicts.some(c => c.severity === 'high')) {
+      // Get reseller details for workflow determination
+      const { data: reseller } = await supabase
+        .from('resellers')
+        .select('*')
+        .eq('id', dealData.reseller_id)
+        .single()
+
+      if (reseller) {
+        const approvalEngine = new ApprovalEngine()
+        approvalResult = await approvalEngine.determineWorkflow({
+          ...insertedDeal,
+          reseller
+        })
       }
     }
     
@@ -236,10 +282,38 @@ export async function POST(request: NextRequest) {
       )
     }
     
+    // Send notifications
+    const notificationService = new NotificationService()
+
+    if (conflictResult.hasConflicts) {
+      // Notify about conflicts
+      const conflictingDeals = conflictResult.conflicts.map(c => c.conflictingDeal)
+      await notificationService.notifyConflictDetected(completeDeal, conflictingDeals)
+    } else {
+      // Notify about new deal submission
+      await notificationService.notifyDealSubmitted(completeDeal)
+
+      // Notify approvers if workflow was initialized
+      if (approvalResult && !approvalResult.autoApproved && approvalResult.nextApprovers.length > 0) {
+        await notificationService.notifyApprovalRequired(completeDeal, approvalResult.nextApprovers)
+      }
+    }
+
+    // Clean up any existing draft for this reseller
+    await supabase
+      .from('deal_drafts')
+      .delete()
+      .eq('reseller_id', dealData.reseller_id)
+
     return NextResponse.json({
       data: {
         deal: completeDeal,
-        conflicts: conflictResult
+        conflicts: conflictResult,
+        approval: approvalResult,
+        validation: {
+          warnings: validationResult.warnings,
+          errors: validationErrors
+        }
       },
       success: true,
       error: null
