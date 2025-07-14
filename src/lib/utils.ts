@@ -244,7 +244,7 @@ export function calculateDiscountAmount(
   }
 }
 
-export function formatPriceRange(minPrice: number, maxPrice: number, currency = 'GBP'): string {
+export function formatPriceRange(minPrice: number, maxPrice: number): string {
   if (minPrice === maxPrice) {
     return formatCurrency(minPrice)
   }

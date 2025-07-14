@@ -1,13 +1,7 @@
 import { createServerComponentClient } from './supabase'
-import type { 
-  PricingContext, 
-  PricingResult, 
-  Product, 
-  VolumeDiscount, 
-  DealRegistrationPricing,
-  TerritoryPricing,
-  PromotionalPricing,
-  ProductPricingTier
+import type {
+  PricingContext,
+  PricingResult
 } from './types'
 
 export class PricingEngine {
@@ -31,7 +25,7 @@ export class PricingEngine {
       throw new Error('Product not found')
     }
 
-    let basePrice = product.list_price
+    const basePrice = product.list_price
     let finalPrice = basePrice
     const discountsApplied: PricingResult['discounts_applied'] = []
     let pricingTier: string | undefined

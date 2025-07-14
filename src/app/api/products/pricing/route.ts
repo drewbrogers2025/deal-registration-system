@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerComponentClient } from '@/lib/supabase'
 import { PricingContextSchema } from '@/lib/types'
 import { pricingEngine } from '@/lib/pricing'
 

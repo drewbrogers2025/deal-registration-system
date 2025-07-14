@@ -6,9 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { PricingDisplay, VolumeDiscountCalculator } from './pricing-display'
+import { PricingDisplay } from './pricing-display'
 import { formatCurrency, debounce } from '@/lib/utils'
-import { Search, Filter, Grid, List, Package, Eye, ShoppingCart } from 'lucide-react'
+import { Search, Grid, List, Package, Eye, ShoppingCart } from 'lucide-react'
 import type { ProductWithRelations, ProductCategory, ProductCatalogFilter } from '@/lib/types'
 
 interface ProductCatalogProps {
@@ -51,7 +51,7 @@ export function ProductCatalog({
     debounce((term: string) => {
       setFilters(prev => ({ ...prev, search: term || undefined, page: 1 }))
     }, 300),
-    []
+    [setFilters]
   )
 
   useEffect(() => {

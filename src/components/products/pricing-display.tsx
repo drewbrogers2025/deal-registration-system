@@ -143,11 +143,9 @@ interface VolumeDiscountCalculatorProps {
   className?: string
 }
 
-export function VolumeDiscountCalculator({ 
-  productId, 
-  basePrice, 
-  onQuantityChange,
-  className = '' 
+export function VolumeDiscountCalculator({
+  basePrice,
+  className = ''
 }: VolumeDiscountCalculatorProps) {
   // This would typically fetch volume discount tiers and calculate pricing
   // For now, showing a simplified version
