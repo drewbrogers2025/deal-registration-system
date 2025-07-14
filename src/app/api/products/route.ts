@@ -104,6 +104,7 @@ export async function GET(request: NextRequest) {
               reseller_tier: filters.reseller_tier,
               territory: filters.territory,
               quantity: filterParams.quantity,
+              is_deal_registration: false,
               calculation_date: new Date().toISOString(),
             }
 
