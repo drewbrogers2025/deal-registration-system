@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 
     // Build hierarchy if requested
     if (includeHierarchy && !parentId) {
-      const categoryMap = new Map<string, any>()
+      const categoryMap = new Map<string, { id: string; name: string; children: unknown[] }>()
       const rootCategories: string[] = []
 
       // First pass: create map and identify roots
