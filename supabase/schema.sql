@@ -328,6 +328,35 @@ CREATE POLICY "Managers and admins can manage eligibility rules" ON eligibility_
         )
     );
 
+-- Create indexes for new tables
+CREATE INDEX idx_deal_drafts_reseller_id ON deal_drafts(reseller_id);
+CREATE INDEX idx_deal_drafts_updated_at ON deal_drafts(updated_at);
+
+CREATE INDEX idx_deal_approvals_deal_id ON deal_approvals(deal_id);
+CREATE INDEX idx_deal_approvals_workflow_id ON deal_approvals(workflow_id);
+CREATE INDEX idx_deal_approvals_approver_id ON deal_approvals(approver_id);
+CREATE INDEX idx_deal_approvals_step_number ON deal_approvals(step_number);
+
+CREATE INDEX idx_deal_status_history_deal_id ON deal_status_history(deal_id);
+CREATE INDEX idx_deal_status_history_created_at ON deal_status_history(created_at);
+
+CREATE INDEX idx_deal_comments_deal_id ON deal_comments(deal_id);
+CREATE INDEX idx_deal_comments_author_id ON deal_comments(author_id);
+CREATE INDEX idx_deal_comments_created_at ON deal_comments(created_at);
+
+CREATE INDEX idx_deal_documents_deal_id ON deal_documents(deal_id);
+CREATE INDEX idx_deal_documents_document_type ON deal_documents(document_type);
+
+CREATE INDEX idx_notifications_recipient_id ON notifications(recipient_id);
+CREATE INDEX idx_notifications_status ON notifications(status);
+CREATE INDEX idx_notifications_type ON notifications(type);
+CREATE INDEX idx_notifications_created_at ON notifications(created_at);
+
+-- Apply updated_at triggers to new tables
+CREATE TRIGGER update_deal_drafts_updated_at BEFORE UPDATE ON deal_drafts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_approval_workflows_updated_at BEFORE UPDATE ON approval_workflows FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_deal_comments_updated_at BEFORE UPDATE ON deal_comments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- Sample data for testing
 INSERT INTO staff_users (email, name, role) VALUES
     ('admin@company.com', 'System Admin', 'admin'),
@@ -348,12 +377,132 @@ INSERT INTO resellers (name, email, territory, tier) VALUES
     ('Enterprise Solutions', 'deals@enterprisesol.com', 'Midwest US', 'bronze'),
     ('Global Systems', 'partners@globalsys.com', 'International', 'gold');
 
+-- Sample approval workflows
+INSERT INTO approval_workflows (name, description, conditions, steps) VALUES
+    ('Standard Deal Approval', 'Default approval workflow for deals under $50k',
+     '{"max_deal_value": 50000, "partner_tiers": ["gold", "silver", "bronze"]}',
+     '[{"step": 1, "role": "staff", "required": true}, {"step": 2, "role": "manager", "required": false, "auto_approve_threshold": 25000}]'),
+    ('High Value Deal Approval', 'Approval workflow for deals over $50k',
+     '{"min_deal_value": 50000}',
+     '[{"step": 1, "role": "staff", "required": true}, {"step": 2, "role": "manager", "required": true}, {"step": 3, "role": "admin", "required": true, "threshold": 100000}]'),
+    ('Bronze Partner Approval', 'Enhanced approval for bronze tier partners',
+     '{"partner_tiers": ["bronze"], "max_deal_value": 25000}',
+     '[{"step": 1, "role": "manager", "required": true}, {"step": 2, "role": "admin", "required": false}]');
+
 INSERT INTO end_users (company_name, contact_name, contact_email, territory) VALUES
     ('Acme Corporation', 'John Smith', 'john.smith@acme.com', 'Northeast US'),
     ('Global Tech Inc', 'Sarah Johnson', 'sarah.j@globaltech.com', 'West Coast'),
     ('StartupTech', 'Mike Chen', 'mike@startuptech.com', 'Southeast US'),
     ('Enterprise Corp', 'Lisa Brown', 'lisa.brown@enterprise.com', 'Midwest US'),
     ('Innovation Labs', 'David Wilson', 'david@innovationlabs.com', 'International');
+
+-- Enhanced workflow and approval system tables
+
+-- Deal status with substatus tracking
+CREATE TYPE deal_substatus AS ENUM (
+    'draft', 'submitted', 'under_review', 'validation_pending', 'conflict_review',
+    'approval_pending', 'manager_review', 'admin_review', 'approved_conditional',
+    'rejected_validation', 'rejected_conflict', 'rejected_approval', 'appeal_pending'
+);
+
+-- Approval workflow types
+CREATE TYPE approval_action AS ENUM ('approve', 'reject', 'request_changes', 'escalate');
+CREATE TYPE notification_type AS ENUM ('deal_submitted', 'approval_required', 'deal_approved', 'deal_rejected', 'conflict_detected', 'comment_added', 'document_uploaded');
+CREATE TYPE notification_status AS ENUM ('unread', 'read', 'archived');
+
+-- Deal drafts for saving incomplete registrations
+CREATE TABLE deal_drafts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    reseller_id UUID NOT NULL REFERENCES resellers(id) ON DELETE CASCADE,
+    draft_data JSONB NOT NULL,
+    step_completed INTEGER DEFAULT 1,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Enhanced deals table with substatus
+ALTER TABLE deals ADD COLUMN substatus deal_substatus DEFAULT 'submitted';
+ALTER TABLE deals ADD COLUMN priority INTEGER DEFAULT 1 CHECK (priority BETWEEN 1 AND 5);
+ALTER TABLE deals ADD COLUMN expected_close_date DATE;
+ALTER TABLE deals ADD COLUMN deal_description TEXT;
+
+-- Approval workflows configuration
+CREATE TABLE approval_workflows (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    description TEXT,
+    conditions JSONB NOT NULL, -- Rules for when this workflow applies
+    steps JSONB NOT NULL, -- Array of approval steps with roles and thresholds
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Deal approvals tracking
+CREATE TABLE deal_approvals (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    deal_id UUID NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
+    workflow_id UUID NOT NULL REFERENCES approval_workflows(id),
+    step_number INTEGER NOT NULL,
+    approver_id UUID REFERENCES staff_users(id) ON DELETE SET NULL,
+    action approval_action,
+    comments TEXT,
+    approved_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Deal status history for audit trail
+CREATE TABLE deal_status_history (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    deal_id UUID NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
+    old_status deal_status,
+    new_status deal_status NOT NULL,
+    old_substatus deal_substatus,
+    new_substatus deal_substatus,
+    changed_by UUID REFERENCES staff_users(id) ON DELETE SET NULL,
+    reason TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Deal comments for communication
+CREATE TABLE deal_comments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    deal_id UUID NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
+    author_id UUID REFERENCES staff_users(id) ON DELETE SET NULL,
+    content TEXT NOT NULL,
+    is_internal BOOLEAN DEFAULT false,
+    parent_comment_id UUID REFERENCES deal_comments(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Deal documents for attachments
+CREATE TABLE deal_documents (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    deal_id UUID NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
+    filename TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    file_size INTEGER,
+    mime_type TEXT,
+    uploaded_by UUID REFERENCES staff_users(id) ON DELETE SET NULL,
+    is_required BOOLEAN DEFAULT false,
+    document_type TEXT, -- 'quote', 'contract', 'technical_spec', etc.
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Notifications system
+CREATE TABLE notifications (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    recipient_id UUID NOT NULL REFERENCES staff_users(id) ON DELETE CASCADE,
+    type notification_type NOT NULL,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    status notification_status DEFAULT 'unread',
+    related_deal_id UUID REFERENCES deals(id) ON DELETE CASCADE,
+    action_url TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    read_at TIMESTAMP WITH TIME ZONE
+);
 
 -- Sample eligibility rules
 INSERT INTO eligibility_rules (name, description, rule_type, conditions) VALUES
