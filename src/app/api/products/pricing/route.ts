@@ -49,8 +49,15 @@ export async function POST(request: NextRequest) {
     )
 
     // Process results
-    const successfulResults = []
-    const errors = []
+    const successfulResults: Array<{
+      product_id: string
+      pricing: any
+      availability: any
+    }> = []
+    const errors: Array<{
+      product_id: string
+      error: string
+    }> = []
 
     pricingResults.forEach((result, index) => {
       if (result.status === 'fulfilled') {
