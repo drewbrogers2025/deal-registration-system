@@ -2,17 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { MainLayout } from '@/components/layout/main-layout'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  Calendar,
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Plus,
+  Search,
   DollarSign,
   TrendingUp,
   Users,
@@ -20,7 +17,8 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
-  BarChart3
+  BarChart3,
+  FileText
 } from 'lucide-react'
 import { EnhancedDealForm } from '@/components/deals/enhanced-deal-form'
 import type { EnhancedDealWithRelations, Reseller, Product } from '@/lib/types'
@@ -31,10 +29,8 @@ export default function EnhancedDealsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateForm, setShowCreateForm] = useState(false)
-  const [selectedDeal, setSelectedDeal] = useState<EnhancedDealWithRelations | null>(null)
+  const [_selectedDeal, _setSelectedDeal] = useState<EnhancedDealWithRelations | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [stageFilter, setStageFilter] = useState<string>('all')
-  const [priorityFilter, setPriorityFilter] = useState<string>('all')
 
   useEffect(() => {
     fetchData()
@@ -123,8 +119,6 @@ export default function EnhancedDealsPage() {
   const filteredDeals = deals.filter(deal => {
     const matchesSearch = deal.deal_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          deal.reseller?.name?.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStage = stageFilter === 'all' || deal.opportunity_stage === stageFilter
-    const matchesPriority = priorityFilter === 'all' || deal.deal_priority === priorityFilter
     
     return matchesSearch && matchesStage && matchesPriority
   })
@@ -237,7 +231,6 @@ export default function EnhancedDealsPage() {
           </Card>
         </div>
 
-        {/* Filters and Actions */}
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
@@ -252,7 +245,6 @@ export default function EnhancedDealsPage() {
                   />
                 </div>
                 
-                <Select value={stageFilter} onValueChange={setStageFilter}>
                   <SelectTrigger className="w-48">
                     <SelectValue placeholder="All Stages" />
                   </SelectTrigger>
@@ -267,7 +259,6 @@ export default function EnhancedDealsPage() {
                   </SelectContent>
                 </Select>
 
-                <Select value={priorityFilter} onValueChange={setPriorityFilter}>
                   <SelectTrigger className="w-48">
                     <SelectValue placeholder="All Priorities" />
                   </SelectTrigger>
@@ -361,7 +352,6 @@ export default function EnhancedDealsPage() {
                 <BarChart3 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No deals found</h3>
                 <p className="text-gray-600 mb-4">
-                  {searchTerm || stageFilter !== 'all' || priorityFilter !== 'all'
                     ? 'Try adjusting your search criteria or filters.'
                     : 'Get started by creating your first enhanced deal registration.'
                   }

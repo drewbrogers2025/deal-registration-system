@@ -4,7 +4,7 @@ import { NotificationService } from '@/lib/notification-service'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createServerComponentClient()
+    // const supabase = createServerComponentClient()
     const { searchParams } = new URL(request.url)
     
     // TODO: Get user ID from auth context
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const supabase = createServerComponentClient()
+    // const supabase = createServerComponentClient()
     const body = await request.json()
     const { notification_id, action } = body
 

@@ -16,7 +16,6 @@ import {
    
    
    
-  SelectValue 
 } from '@/components/ui/select'
 import { 
   User, 
@@ -32,7 +31,6 @@ import {
   Edit
 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
-import type { UserWithProfile } from '@/lib/types'
 
 export default function ProfilePage() {
   const { authUser, refreshUser } = useAuth()

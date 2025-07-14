@@ -68,12 +68,12 @@ interface InteractiveChartProps {
   loading?: boolean
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload, label }: unknown) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-white p-3 border rounded-lg shadow-lg">
         <p className="font-medium text-gray-900">{label}</p>
-        {payload.map((entry: any, index: number) => (
+        {payload.map((entry: unknown, index: number) => (
           <p key={index} className="text-sm" style={{ color: entry.color }}>
             {entry.name}: {typeof entry.value === 'number' ? entry.value.toLocaleString() : entry.value}
           </p>
@@ -103,7 +103,7 @@ export function InteractiveChart({
   onRefresh,
   loading = false,
 }: InteractiveChartProps) {
-  const [isFullscreen, setIsFullscreen] = React.useState(false)
+  const [_isFullscreen, setIsFullscreen] = React.useState(false)
   const chartRef = React.useRef<HTMLDivElement>(null)
 
   const colors = config.colors || defaultColors

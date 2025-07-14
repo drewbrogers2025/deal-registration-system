@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
       error: null
     })
     
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error in users API:', err)
     return NextResponse.json({
       success: false,
@@ -121,7 +121,7 @@ export async function PATCH(request: NextRequest) {
       }, { status: 400 })
     }
     
-    let updates: any = {}
+    let updates: unknown = {}
     
     // Handle specific actions
     if (action === 'approve') {
@@ -223,7 +223,7 @@ export async function PATCH(request: NextRequest) {
       error: null
     })
     
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error updating user:', err)
     return NextResponse.json({
       success: false,
@@ -284,7 +284,7 @@ export async function DELETE(request: NextRequest) {
       error: null
     })
     
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error deleting user:', err)
     return NextResponse.json({
       success: false,

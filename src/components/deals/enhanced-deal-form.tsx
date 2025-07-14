@@ -25,12 +25,11 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
-import { EnhancedDealSchema, type EnhancedDeal, type Reseller, type EndUser, type Product } from '@/lib/types'
 
 interface EnhancedDealFormProps {
   initialData?: Partial<EnhancedDeal>
   resellers: Reseller[]
-  products: Product[]
+  _products: Product[]
   onSubmit: (data: EnhancedDeal) => void
   onCancel: () => void
   isLoading?: boolean
@@ -72,13 +71,13 @@ const DEAL_COMPLEXITIES = [
 export function EnhancedDealForm({
   initialData,
   resellers,
-  products,
+  _products,
   onSubmit,
   onCancel,
   isLoading = false,
   mode = 'create'
 }: EnhancedDealFormProps) {
-  const [selectedReseller, setSelectedReseller] = useState<Reseller | null>(null)
+  const [_selectedReseller, setSelectedReseller] = useState<Reseller | null>(null)
   const [expectedCloseDate, setExpectedCloseDate] = useState<Date>()
 
   const {

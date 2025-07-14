@@ -22,10 +22,10 @@ export interface SecurityMiddlewareConfig {
  * Enhanced security middleware for API routes
  */
 export function withSecurity(
-  handler: (req: NextRequest, context?: any) => Promise<NextResponse>,
+  handler: (req: NextRequest, context?: unknown) => Promise<NextResponse>,
   config: SecurityMiddlewareConfig = {}
 ) {
-  return async (req: NextRequest, context?: any): Promise<NextResponse> => {
+  return async (req: NextRequest, context?: unknown): Promise<NextResponse> => {
     const startTime = Date.now()
     let userId: string | null = null
     let sessionId: string | null = null

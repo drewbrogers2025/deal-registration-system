@@ -5,7 +5,6 @@
  * including RBAC, audit logging, rate limiting, and data protection.
  */
 
-import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals'
 import { rbacService } from '../rbac/service'
 import { auditService } from '../security/audit'
 import { rateLimitService } from '../security/rate-limiting'
@@ -50,7 +49,7 @@ describe('RBAC Service', () => {
 
     it('should return false for invalid permission', async () => {
       // Mock no permissions found
-      const mockSupabase = require('../supabase').createAdminClient()
+      const mockSupabase = import('../supabase').createAdminClient()
       mockSupabase.from.mockReturnValue({
         select: jest.fn(() => ({
           eq: jest.fn(() => ({
@@ -70,7 +69,7 @@ describe('RBAC Service', () => {
 
     it('should handle database errors gracefully', async () => {
       // Mock database error
-      const mockSupabase = require('../supabase').createAdminClient()
+      const mockSupabase = import('../supabase').createAdminClient()
       mockSupabase.from.mockReturnValue({
         select: jest.fn(() => ({
           eq: jest.fn(() => ({
@@ -101,7 +100,7 @@ describe('RBAC Service', () => {
 
     it('should handle role assignment errors', async () => {
       // Mock database error
-      const mockSupabase = require('../supabase').createAdminClient()
+      const mockSupabase = import('../supabase').createAdminClient()
       mockSupabase.from.mockReturnValue({
         insert: jest.fn(() => ({ error: new Error('Insert failed') }))
       })
@@ -138,7 +137,7 @@ describe('Audit Service', () => {
 
     it('should handle logging errors gracefully', async () => {
       // Mock database error
-      const mockSupabase = require('../supabase').createAdminClient()
+      const mockSupabase = import('../supabase').createAdminClient()
       mockSupabase.from.mockReturnValue({
         insert: jest.fn(() => ({
           select: jest.fn(() => ({
@@ -225,7 +224,7 @@ describe('Rate Limiting Service', () => {
 
     it('should block requests exceeding limit', async () => {
       // Mock rate limit exceeded
-      const mockSupabase = require('../supabase').createAdminClient()
+      const mockSupabase = import('../supabase').createAdminClient()
       mockSupabase.rpc.mockReturnValue({ data: false, error: null })
 
       const result = await rateLimitService.checkRateLimit(
@@ -240,7 +239,7 @@ describe('Rate Limiting Service', () => {
 
     it('should fallback to memory store on database error', async () => {
       // Mock database error
-      const mockSupabase = require('../supabase').createAdminClient()
+      const mockSupabase = import('../supabase').createAdminClient()
       mockSupabase.rpc.mockReturnValue({ data: null, error: new Error('DB Error') })
 
       const result = await rateLimitService.checkRateLimit(
@@ -326,7 +325,7 @@ describe('Security Service', () => {
   describe('checkAccountLockout', () => {
     it('should not lock account with few failed attempts', async () => {
       // Mock user with 2 failed attempts
-      const mockSupabase = require('../supabase').createAdminClient()
+      const mockSupabase = import('../supabase').createAdminClient()
       mockSupabase.from.mockReturnValue({
         select: jest.fn(() => ({
           eq: jest.fn(() => ({
@@ -345,7 +344,7 @@ describe('Security Service', () => {
 
     it('should lock account after max failed attempts', async () => {
       // Mock user with 5 failed attempts
-      const mockSupabase = require('../supabase').createAdminClient()
+      const mockSupabase = import('../supabase').createAdminClient()
       mockSupabase.from.mockReturnValue({
         select: jest.fn(() => ({
           eq: jest.fn(() => ({
@@ -403,14 +402,14 @@ describe('Security Integration Tests', () => {
     expect(result1.allowed).toBe(true)
 
     // Second request should be blocked (if using memory store)
-    const result2 = await rateLimitService.checkRateLimit(mockRequest, 1, 60000)
+    const _result2 = await rateLimitService.checkRateLimit(mockRequest, 1, 60000)
     // Note: This might pass if using database store, depending on implementation
   })
 })
 
 describe('Security Configuration Tests', () => {
   it('should have secure default configurations', () => {
-    const { securityConfig } = require('../security/config')
+    const { securityConfig } = import('../security/config')
 
     expect(securityConfig.passwordPolicy.minLength).toBeGreaterThanOrEqual(8)
     expect(securityConfig.passwordPolicy.requireUppercase).toBe(true)
@@ -420,7 +419,7 @@ describe('Security Configuration Tests', () => {
   })
 
   it('should have appropriate rate limits for sensitive endpoints', () => {
-    const { securityConfig } = require('../security/config')
+    const { securityConfig } = import('../security/config')
 
     expect(securityConfig.rateLimiting.endpoints['/api/auth/login'].limit).toBeLessThanOrEqual(10)
     expect(securityConfig.rateLimiting.endpoints['/api/export'].limit).toBeLessThanOrEqual(10)

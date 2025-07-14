@@ -92,7 +92,7 @@ export default function TestAuthPage() {
     setMessage('')
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
@@ -115,7 +115,7 @@ export default function TestAuthPage() {
     setMessage('')
 
     try {
-      const { data, error } = await supabase.auth.signInWithOtp({
+      const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/verify`,

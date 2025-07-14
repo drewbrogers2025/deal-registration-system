@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
 
     // 3. Create deal products if provided
     if (body.products && body.products.length > 0) {
-      const dealProducts = body.products.map((product: any) => ({
+      const dealProducts = body.products.map((product: unknown) => ({
         ...product,
         deal_id: insertedDeal.id,
       }))

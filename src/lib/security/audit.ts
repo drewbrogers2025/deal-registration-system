@@ -1,5 +1,4 @@
 import { createAdminClient } from '@/lib/supabase'
-import type { AuditLog, SecurityEvent } from '@/lib/rbac/types'
 
 export interface AuditLogInput {
   user_id?: string
@@ -16,7 +15,6 @@ export interface AuditLogInput {
   metadata?: Record<string, unknown>
 }
 
-export interface SecurityEventInput {
   event_type: string
   user_id?: string
   ip_address?: string

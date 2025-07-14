@@ -58,11 +58,11 @@ export interface WidgetType {
   description: string
   icon: React.ComponentType<{ className?: string }>
   defaultSize: 'small' | 'medium' | 'large'
-  component: React.ComponentType<{ widget: Widget; data?: any }>
+  component: React.ComponentType<{ widget: Widget; data?: unknown }>
 }
 
 // Sample widget components
-const MetricWidget: React.FC<{ widget: Widget; data?: any }> = ({ widget, data }) => (
+const MetricWidget: React.FC<{ widget: Widget; data?: unknown }> = ({ widget, data }) => (
   <div className="flex items-center justify-between">
     <div>
       <p className="text-2xl font-bold">{data?.value || '0'}</p>
@@ -83,7 +83,7 @@ const MetricWidget: React.FC<{ widget: Widget; data?: any }> = ({ widget, data }
   </div>
 )
 
-const ChartWidget: React.FC<{ widget: Widget; data?: any }> = ({ widget }) => (
+const ChartWidget: React.FC<{ widget: Widget; data?: unknown }> = ({ widget }) => (
   <div className="space-y-4">
     <div className="h-32 bg-gray-100 rounded flex items-center justify-center">
       <BarChart3 className="h-8 w-8 text-gray-400" />
@@ -92,9 +92,9 @@ const ChartWidget: React.FC<{ widget: Widget; data?: any }> = ({ widget }) => (
   </div>
 )
 
-const ListWidget: React.FC<{ widget: Widget; data?: any }> = ({ widget, data }) => (
+const ListWidget: React.FC<{ widget: Widget; data?: unknown }> = ({ widget, data }) => (
   <div className="space-y-2">
-    {(data?.items || []).slice(0, 5).map((item: any, index: number) => (
+    {(data?.items || []).slice(0, 5).map((item: unknown, index: number) => (
       <div key={index} className="flex items-center justify-between py-2 border-b last:border-b-0">
         <div>
           <p className="text-sm font-medium">{item.title}</p>
@@ -168,7 +168,7 @@ export const widgetTypes: WidgetType[] = [
 
 interface SortableWidgetProps {
   widget: Widget
-  data?: any
+  data?: unknown
   onRemove: (id: string) => void
   onToggleVisibility: (id: string) => void
   onConfigure?: (id: string) => void

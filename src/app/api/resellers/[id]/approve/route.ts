@@ -124,7 +124,7 @@ export async function POST(
     // Log the activity
     if (action === 'approve') {
       // Find primary contact to log activity
-      const primaryContact = updatedReseller.contacts?.find((c: any) => c.is_primary)
+      const primaryContact = updatedReseller.contacts?.find((c: unknown) => c.is_primary)
       if (primaryContact) {
         await supabase
           .from('contact_activity')
@@ -143,7 +143,7 @@ export async function POST(
       }
     } else {
       // Log rejection activity
-      const primaryContact = updatedReseller.contacts?.find((c: any) => c.is_primary)
+      const primaryContact = updatedReseller.contacts?.find((c: unknown) => c.is_primary)
       if (primaryContact) {
         await supabase
           .from('contact_activity')

@@ -231,7 +231,7 @@ export default function UserManagementPage() {
                 />
               </div>
               
-              <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
+              <Select value={statusFilter} onValueChange={(value: unknown) => setStatusFilter(value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
@@ -243,7 +243,7 @@ export default function UserManagementPage() {
                 </SelectContent>
               </Select>
 
-              <Select value={typeFilter} onValueChange={(value: any) => setTypeFilter(value)}>
+              <Select value={typeFilter} onValueChange={(value: unknown) => setTypeFilter(value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Filter by type" />
                 </SelectTrigger>
@@ -307,12 +307,12 @@ export default function UserManagementPage() {
                         )}
                         {user.reseller_user && (
                           <div>
-                            <div>Company: {user.reseller_user.reseller?.name}</div>
+                            <div>Compunknown: {user.reseller_user.reseller?.name}</div>
                             <div>Territory: {user.reseller_user.reseller?.territory}</div>
                           </div>
                         )}
-                        {user.company_position && (
-                          <div>Position: {user.company_position}</div>
+                        {user.compunknown_position && (
+                          <div>Position: {user.compunknown_position}</div>
                         )}
                       </div>
                     </TableCell>

@@ -126,7 +126,7 @@ export function SecurityDashboard() {
       <Alert>
         <Shield className="h-4 w-4" />
         <AlertDescription>
-          You don't have permission to view the security dashboard.
+          You don&apos;t have permission to view the security dashboard.
         </AlertDescription>
       </Alert>
     }>

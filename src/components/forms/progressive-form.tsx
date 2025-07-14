@@ -31,13 +31,13 @@ export interface FormStep {
     isLast: boolean
   }>
   optional?: boolean
-  condition?: (data: any) => boolean
+  condition?: (data: unknown) => boolean
 }
 
 interface ProgressiveFormProps {
   steps: FormStep[]
-  onSubmit: (data: any) => Promise<void> | void
-  onSave?: (data: any) => Promise<void> | void
+  onSubmit: (data: unknown) => Promise<void> | void
+  onSave?: (data: unknown) => Promise<void> | void
   defaultValues?: Record<string, any>
   autoSaveKey?: string
   className?: string
