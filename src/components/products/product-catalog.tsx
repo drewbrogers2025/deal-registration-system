@@ -47,12 +47,12 @@ export function ProductCatalog({
   const [priceRange, setPriceRange] = useState({ min: '', max: '' })
 
   // Debounced search
-  const debouncedSearch = useCallback(
-    debounce((term: string) => {
+  const debouncedSearch = useCallback((term: string) => {
+    const debouncedFn = debounce(() => {
       setFilters(prev => ({ ...prev, search: term || undefined, page: 1 }))
-    }, 300),
-    [setFilters]
-  )
+    }, 300)
+    debouncedFn()
+  }, [setFilters])
 
   useEffect(() => {
     debouncedSearch(searchTerm)
