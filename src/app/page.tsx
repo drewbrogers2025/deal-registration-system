@@ -1,202 +1,242 @@
+'use client'
+
+import { useState } from 'react'
 import { MainLayout } from '@/components/layout/main-layout'
+import { CustomizableWidgets } from '@/components/dashboard/customizable-widgets'
+import { InteractiveChart } from '@/components/charts/interactive-charts'
+import { useDashboardWidgets } from '@/hooks/use-dashboard-widgets'
+import { useRolePermissions } from '@/hooks/use-role-permissions'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { formatCurrency } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
+import { SkeletonDashboard } from '@/components/ui/skeleton'
+import { Tooltip } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
 import {
-  FileText,
-  AlertTriangle,
-  PoundSterling,
-  Clock
+  Plus,
+  Settings,
+  RefreshCw,
+  BarChart3,
+  TrendingUp,
+  Activity,
 } from 'lucide-react'
 
 export default function Dashboard() {
-  // Mock data - will be replaced with real data from Supabase
-  const metrics = {
-    totalDeals: 156,
-    pendingDeals: 23,
-    disputedDeals: 8,
-    totalValue: 2450000,
-    avgResolutionTime: 2.3,
-    conflictsResolved: 45
+  const { userProfile, hasPermission, loading: roleLoading } = useRolePermissions()
+  const {
+    widgets,
+    data,
+    loading: widgetsLoading,
+    error,
+    saveWidgets,
+    addWidget,
+    refreshData,
+    availableWidgetTypes,
+    resetToDefaults,
+  } = useDashboardWidgets()
+
+  const [showWidgetSelector, setShowWidgetSelector] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  const handleRefreshData = async () => {
+    setIsRefreshing(true)
+    await refreshData()
+    setIsRefreshing(false)
   }
 
-  const recentDeals = [
-    {
-      id: '1',
-      company: 'Acme Corp',
-      reseller: 'TechPartner Solutions',
-      value: 125000,
-      status: 'pending',
-      submittedAt: '2024-01-15'
-    },
-    {
-      id: '2',
-      company: 'Global Systems Inc',
-      reseller: 'Channel Pro',
-      value: 89000,
-      status: 'disputed',
-      submittedAt: '2024-01-14'
-    },
-    {
-      id: '3',
-      company: 'StartupTech',
-      reseller: 'Regional Partners',
-      value: 45000,
-      status: 'assigned',
-      submittedAt: '2024-01-13'
-    }
+  const handleAddWidget = (widgetType: any) => {
+    addWidget(widgetType)
+    setShowWidgetSelector(false)
+  }
+
+  // Sample chart data
+  const chartData = [
+    { month: 'Jan', deals: 12, revenue: 145000 },
+    { month: 'Feb', deals: 19, revenue: 230000 },
+    { month: 'Mar', deals: 15, revenue: 180000 },
+    { month: 'Apr', deals: 22, revenue: 290000 },
+    { month: 'May', deals: 18, revenue: 220000 },
+    { month: 'Jun', deals: 25, revenue: 340000 },
   ]
 
-  const pendingConflicts = [
-    {
-      id: '1',
-      company: 'Acme Corp',
-      conflictType: 'duplicate_end_user',
-      resellers: ['TechPartner Solutions', 'Channel Pro'],
-      priority: 'high'
-    },
-    {
-      id: '2',
-      company: 'Global Systems Inc',
-      conflictType: 'territory_overlap',
-      resellers: ['Regional Partners', 'Enterprise Solutions'],
-      priority: 'medium'
-    }
-  ]
+  if (roleLoading || widgetsLoading) {
+    return (
+      <MainLayout title="Dashboard" subtitle="Overview of deal registrations and performance">
+        <SkeletonDashboard />
+      </MainLayout>
+    )
+  }
+
+  if (error) {
+    return (
+      <MainLayout title="Dashboard" subtitle="Overview of deal registrations and performance">
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <p className="text-red-800">Error loading dashboard: {error}</p>
+            <Button onClick={handleRefreshData} className="mt-4">
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+      </MainLayout>
+    )
+  }
 
   return (
     <MainLayout
       title="Dashboard"
-      subtitle="Overview of deal registrations and conflicts"
+      subtitle={`Welcome back, ${userProfile?.name || 'User'}! Here's your personalized dashboard.`}
     >
-      {/* Metrics Cards */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Deals</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.totalDeals}</div>
-            <p className="text-xs text-muted-foreground">
-              +12% from last month
-            </p>
-          </CardContent>
-        </Card>
+      {/* Dashboard Controls */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-2">
+          <Tooltip content="Refresh all dashboard data">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefreshData}
+              disabled={isRefreshing}
+            >
+              <RefreshCw className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")} />
+              Refresh
+            </Button>
+          </Tooltip>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Deals</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.pendingDeals}</div>
-            <p className="text-xs text-muted-foreground">
-              Require assignment
-            </p>
-          </CardContent>
-        </Card>
+          {hasPermission('canManageSettings') && (
+            <Tooltip content="Reset dashboard to default layout">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={resetToDefaults}
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Reset Layout
+              </Button>
+            </Tooltip>
+          )}
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Conflicts</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.disputedDeals}</div>
-            <p className="text-xs text-muted-foreground">
-              Need resolution
-            </p>
-          </CardContent>
-        </Card>
+        <div className="flex items-center space-x-2">
+          <Badge variant="secondary" className="text-xs">
+            {userProfile?.role?.toUpperCase()} VIEW
+          </Badge>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Value</CardTitle>
-            <PoundSterling className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              £{(metrics.totalValue / 1000000).toFixed(1)}M
-            </div>
-            <p className="text-xs text-muted-foreground">
-              +8% from last month
-            </p>
-          </CardContent>
-        </Card>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowWidgetSelector(!showWidgetSelector)}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Widget
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Recent Deals */}
-        <Card>
+      {/* Widget Selector */}
+      {showWidgetSelector && (
+        <Card className="mb-6 border-blue-200 bg-blue-50">
           <CardHeader>
-            <CardTitle>Recent Deal Submissions</CardTitle>
+            <CardTitle className="text-lg">Add Widget</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {recentDeals.map((deal) => (
-                <div key={deal.id} className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{deal.company}</p>
-                    <p className="text-sm text-muted-foreground">
-                      by {deal.reseller}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium">
-                      {formatCurrency(deal.value)}
-                    </p>
-                    <Badge
-                      variant={
-                        deal.status === 'pending' ? 'warning' :
-                        deal.status === 'disputed' ? 'error' : 'success'
-                      }
-                    >
-                      {deal.status}
-                    </Badge>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {availableWidgetTypes.map((widgetType) => (
+                <div
+                  key={widgetType.id}
+                  className="border rounded-lg p-4 hover:bg-white cursor-pointer transition-colors"
+                  onClick={() => handleAddWidget(widgetType)}
+                >
+                  <div className="flex items-center space-x-3">
+                    <widgetType.icon className="h-8 w-8 text-blue-600" />
+                    <div>
+                      <h3 className="font-medium">{widgetType.name}</h3>
+                      <p className="text-sm text-gray-600">{widgetType.description}</p>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
-            <Button className="w-full mt-4" variant="outline">
-              View All Deals
-            </Button>
           </CardContent>
         </Card>
+      )}
 
-        {/* Pending Conflicts */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Pending Conflicts</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {pendingConflicts.map((conflict) => (
-                <div key={conflict.id} className="border rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="font-medium">{conflict.company}</p>
-                    <Badge
-                      variant={conflict.priority === 'high' ? 'error' : 'warning'}
-                    >
-                      {conflict.priority} priority
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    {conflict.conflictType.replace('_', ' ')}
-                  </p>
-                  <p className="text-sm">
-                    Competing resellers: {conflict.resellers.join(', ')}
-                  </p>
-                </div>
-              ))}
-            </div>
-            <Button className="w-full mt-4" variant="outline">
-              Resolve Conflicts
+      {/* Customizable Widgets */}
+      <CustomizableWidgets
+        widgets={widgets}
+        onWidgetsChange={saveWidgets}
+        data={data}
+        className="mb-8"
+      />
+
+      {/* Additional Charts Section */}
+      {hasPermission('canViewAnalytics') && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <InteractiveChart
+            config={{
+              type: 'line',
+              title: 'Deals Trend',
+              data: chartData,
+              xAxisKey: 'month',
+              dataKeys: ['deals'],
+              showGrid: true,
+              showLegend: false,
+            }}
+            onRefresh={handleRefreshData}
+            loading={isRefreshing}
+          />
+
+          <InteractiveChart
+            config={{
+              type: 'bar',
+              title: 'Revenue by Month',
+              data: chartData,
+              xAxisKey: 'month',
+              dataKeys: ['revenue'],
+              showGrid: true,
+              showLegend: false,
+            }}
+            onRefresh={handleRefreshData}
+            loading={isRefreshing}
+          />
+        </div>
+      )}
+
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Activity className="h-5 w-5 mr-2" />
+            Quick Actions
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Button className="h-20 flex-col space-y-2" variant="outline">
+              <Plus className="h-6 w-6" />
+              <span>New Deal</span>
             </Button>
-          </CardContent>
-        </Card>
-      </div>
+
+            {hasPermission('canResolveConflicts') && (
+              <Button className="h-20 flex-col space-y-2" variant="outline">
+                <AlertTriangle className="h-6 w-6" />
+                <span>Resolve Conflicts</span>
+              </Button>
+            )}
+
+            {hasPermission('canViewReports') && (
+              <Button className="h-20 flex-col space-y-2" variant="outline">
+                <BarChart3 className="h-6 w-6" />
+                <span>View Reports</span>
+              </Button>
+            )}
+
+            <Button className="h-20 flex-col space-y-2" variant="outline">
+              <TrendingUp className="h-6 w-6" />
+              <span>Analytics</span>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </MainLayout>
   )
 }
