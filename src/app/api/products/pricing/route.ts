@@ -51,8 +51,24 @@ export async function POST(request: NextRequest) {
     // Process results
     const successfulResults: Array<{
       product_id: string
-      pricing: any
-      availability: any
+      pricing: {
+        product_id: string
+        base_price: number
+        final_price: number
+        currency: string
+        discounts_applied: Array<{
+          type: string
+          name: string
+          amount: number
+          percentage?: number
+        }>
+        pricing_tier?: string
+        is_deal_registration_eligible: boolean
+      }
+      availability: {
+        available: boolean
+        reason?: string
+      }
     }> = []
     const errors: Array<{
       product_id: string
